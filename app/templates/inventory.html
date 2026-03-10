@@ -1,0 +1,868 @@
+{% extends "base.html" %}
+{% block title %}Inventario{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h4 class="fw-bold mb-0">Inventario de Productos</h4>
+        <small class="text-muted">{{ products|length }} productos registrados</small>
+    </div>
+    {% if user.role.value == 'admin' %}
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm px-3"
+            onclick="document.getElementById('importCsvInput').click()" title="Importar CSV">
+            <i class="bi bi-upload"></i> <span class="d-none d-md-inline ms-1">Importar</span>
+        </button>
+        <input type="file" id="importCsvInput" class="d-none" accept=".csv">
+        <a href="/api/inventory/export" class="btn btn-outline-secondary btn-sm px-3" title="Exportar CSV">
+            <i class="bi bi-download"></i> <span class="d-none d-md-inline ms-1">Exportar</span>
+        </a>
+        <button class="btn btn-outline-secondary btn-sm px-3" onclick="window.print()" title="Imprimir Inventario">
+            <i class="bi bi-printer"></i> <span class="d-none d-md-inline ms-1">Imprimir</span>
+        </button>
+        <button class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#addProductModal">
+            <i class="bi bi-plus-lg me-1"></i> Nuevo
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Resumen (Solo Admin) -->
+{% if user.role.value == 'admin' %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 p-3 text-center">
+            <small class="text-muted text-uppercase fw-semibold mb-1"
+                style="font-size: 0.65rem; letter-spacing: 1px;">Total Productos</small>
+            <h4 class="fw-bold mb-0 text-primary">{{ products|length }}</h4>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 p-3 text-center">
+            <small class="text-muted text-uppercase fw-semibold mb-1"
+                style="font-size: 0.65rem; letter-spacing: 1px;">Costo Total Inv.</small>
+            {%- set ns = namespace(total=0.0) -%}
+            {%- for p in products -%}{%- set ns.total = ns.total + (p.current_stock * p.average_unit_cost) -%}{%- endfor
+            -%}
+            <h4 class="fw-bold mb-0 text-success">${{ "%.2f"|format(ns.total) }}</h4>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 p-3 text-center">
+            <small class="text-muted text-uppercase fw-semibold mb-1"
+                style="font-size: 0.65rem; letter-spacing: 1px;">Stock Bajo</small>
+            {% set ns2 = namespace(low=0) %}
+            {% for p in products %}{% if p.current_stock <= p.min_stock %}{% set ns2.low=ns2.low + 1 %}{% endif %}{%
+                endfor %} <h4 class="fw-bold mb-0 text-warning">{{ ns2.low }}</h4>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 p-3 text-center">
+            <small class="text-muted text-uppercase fw-semibold mb-1"
+                style="font-size: 0.65rem; letter-spacing: 1px;">Tasa BCV $</small>
+            <h4 class="fw-bold mb-0 text-dark font-monospace">{{ "%.2f"|format(bcv_rate) }}</h4>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Buscador + Filtros -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-3">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="searchInput" class="form-control border-start-0 ps-0"
+                        placeholder="Buscar por nombre o código...">
+                </div>
+            </div>
+            <div class="col-auto d-flex gap-2 flex-wrap">
+                <button class="btn btn-sm btn-outline-secondary active filter-btn" data-cat="all">Todos</button>
+                <button class="btn btn-sm btn-outline-secondary filter-btn"
+                    data-cat="Aceite Mineral|Semi-sintético|Sintético">Aceites</button>
+                <button class="btn btn-sm btn-outline-secondary filter-btn" data-cat="Filtro">Filtros</button>
+                <button class="btn btn-sm btn-outline-secondary filter-btn" data-cat="Aditivo">Aditivos</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla Inventario -->
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle" id="inventoryTable">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3 py-2 sortable" data-sort="barcode" style="font-size: 0.72rem; cursor:pointer;"
+                        title="Código de barras del producto">CÓDIGO <i class="bi bi-arrow-down-up text-muted ms-1"
+                            style="font-size:0.6rem;"></i></th>
+                    <th class="sortable" data-sort="name" style="font-size: 0.72rem; cursor:pointer;">DESCRIPCIÓN <i
+                            class="bi bi-arrow-down-up text-muted ms-1" style="font-size:0.6rem;"></i></th>
+                    <th class="sortable" data-sort="category" style="font-size: 0.72rem; cursor:pointer;"
+                        title="Categoría del producto">CAT. <i class="bi bi-arrow-down-up text-muted ms-1"
+                            style="font-size:0.6rem;"></i></th>
+                    {% if user.role.value == 'admin' %}
+                    <th class="text-end sortable" data-sort="cost" data-type="number"
+                        style="font-size: 0.72rem; cursor:pointer;" title="Costo Promedio Ponderado (PMP) por unidad">
+                        COSTO <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size:0.6rem;"></i></th>
+                    <th class="text-end sortable" data-sort="profit" data-type="number"
+                        style="font-size: 0.72rem; cursor:pointer;"
+                        title="Ganancia por unidad = Precio Venta − Costo PMP">GANANCIA <i
+                            class="bi bi-arrow-down-up text-muted ms-1" style="font-size:0.6rem;"></i></th>
+                    {% endif %}
+                    <th class="text-end sortable" data-sort="retail" data-type="number"
+                        style="font-size: 0.72rem; cursor:pointer;" title="Precio de Venta al Público (PVP) en dólares">
+                        P. VENTA <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size:0.6rem;"></i></th>
+                    <th class="text-end" style="font-size: 0.72rem;" title="Equivalente en Bolívares">Bs $ BCV</th>
+                    <th class="text-end sortable" data-sort="wholesale" data-type="number"
+                        style="font-size: 0.72rem; cursor:pointer;" title="Precio especial para ventas al mayor">MAYOR
+                        <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size:0.6rem;"></i></th>
+                    <th class="text-end sortable" data-sort="distributor" data-type="number"
+                        style="font-size: 0.72rem; cursor:pointer;" title="Precio especial para distribuidores">DISTRIB.
+                        <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size:0.6rem;"></i></th>
+                    <th class="text-center sortable" data-sort="stock" data-type="number"
+                        style="font-size: 0.72rem; cursor:pointer;" title="Unidades disponibles en almacén">STOCK <i
+                            class="bi bi-arrow-down-up text-muted ms-1" style="font-size:0.6rem;"></i></th>
+                    {% if user.role.value == 'admin' %}
+                    <th class="text-center pe-3" style="font-size: 0.72rem;" title="Acciones">ACC.</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if not products %}
+                <tr>
+                    <td colspan="11" class="text-center py-5 text-muted">
+                        <i class="bi bi-box-seam display-4 d-block mb-2 opacity-25"></i>
+                        Sin productos registrados
+                    </td>
+                </tr>
+                {% endif %}
+                {% for product in products %}
+                <tr class="product-row {% if product.current_stock <= product.min_stock %}table-warning{% endif %}"
+                    data-name="{{ product.name | lower }}"
+                    data-barcode="{{ product.barcode | lower if product.barcode else '' }}"
+                    data-cat="{{ product.category.value }}" data-cost="{{ product.average_unit_cost }}"
+                    data-profit="{{ product.retail_price_usd - product.average_unit_cost }}"
+                    data-retail="{{ product.retail_price_usd }}" data-wholesale="{{ product.wholesale_price_usd }}"
+                    data-distributor="{{ product.distributor_price_usd }}" data-stock="{{ product.current_stock }}">
+                    <td class="ps-3">
+                        <span class="font-monospace text-muted" style="font-size:0.75rem;">
+                            {{ product.barcode if product.barcode else '—' }}
+                        </span>
+                        {% if product.is_favorite %}<i class="bi bi-star-fill text-warning ms-1"
+                            style="font-size:0.7rem;"></i>{% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            {% if product.image_path %}
+                            <img src="{{ product.image_path }}" class="rounded me-2 bg-white"
+                                style="width: 36px; height: 36px; object-fit: contain; border: 1px solid #dee2e6; cursor: pointer;"
+                                onclick="window.open('{{ product.image_path }}', '_blank')" title="Ver imagen completa">
+                            {% else %}
+                            <div class="rounded me-2 d-flex align-items-center justify-content-center bg-light text-muted"
+                                style="width: 36px; height: 36px; border: 1px solid #dee2e6; font-size: 0.8rem;"
+                                title="Sin imagen">
+                                <i class="bi bi-image"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <div class="fw-semibold" style="font-size:0.85rem;">{{ product.name }}</div>
+                                <div class="text-muted" style="font-size:0.72rem;">{{ product.brand }} {% if
+                                    product.viscosity %}· {{ product.viscosity }}{% endif %}</div>
+                                <!-- metadata escondida -->
+                                <input type="hidden" class="p-brand" value="{{ product.brand }}">
+                                <input type="hidden" class="p-viscosity" value="{{ product.viscosity }}">
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-muted border p-category" style="font-size:0.65rem;"
+                            data-value="{{ product.category.value }}">{{
+                            product.category.value }}</span>
+                    </td>
+                    {% if user.role.value == 'admin' %}
+                    <td class="text-end font-monospace text-muted" style="font-size:0.82rem;">${{
+                        "%.2f"|format(product.average_unit_cost) }}</td>
+                    <td class="text-end font-monospace fw-semibold text-success" style="font-size:0.82rem;">
+                        ${{ "%.2f"|format(product.retail_price_usd - product.average_unit_cost) }}
+                    </td>
+                    {% endif %}
+                    <td class="text-end font-monospace fw-bold text-primary" style="font-size:0.85rem;">${{
+                        "%.2f"|format(product.retail_price_usd) }}</td>
+                    {%- set bs_bcv = product.retail_price_usd * paralelo_rate / bcv_rate if bcv_rate > 0 else 0 -%}
+                    <td class="text-end font-monospace fw-semibold" style="font-size:0.82rem; color: #7c3aed;"
+                        title="Bs si paga a tasa BCV: PVP ${{ '%.2f'|format(product.retail_price_usd) }} × {{ '%.2f'|format(paralelo_rate) }} ÷ {{ '%.2f'|format(bcv_rate) }}">
+                        Bs {{ "%.2f"|format(bs_bcv) }}</td>
+                    <td class="text-end font-monospace text-dark" style="font-size:0.82rem;">${{
+                        "%.2f"|format(product.wholesale_price_usd) }}</td>
+                    <td class="text-end font-monospace text-dark" style="font-size:0.82rem;">${{
+                        "%.2f"|format(product.distributor_price_usd) }}</td>
+                    <td class="text-center">
+                        <span
+                            class="badge rounded-1 {% if product.current_stock > product.min_stock %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning-emphasis{% endif %} fw-semibold"
+                            style="font-size:0.78rem;">
+                            {{ product.current_stock }}
+                        </span>
+                    </td>
+                    {% if user.role.value == 'admin' %}
+                    <td class="text-center pe-3">
+                        <button class="btn btn-link btn-sm p-0 text-primary edit-btn" data-bs-toggle="modal"
+                            data-bs-target="#editModal" data-id="{{ product.id }}" data-name="{{ product.name }}"
+                            data-barcode="{{ product.barcode if product.barcode else '' }}"
+                            data-cost="{{ product.average_unit_cost }}" data-retail="{{ product.retail_price_usd }}"
+                            data-wholesale="{{ product.wholesale_price_usd }}"
+                            data-distributor="{{ product.distributor_price_usd }}">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <button class="btn btn-link btn-sm p-0 text-success ms-2" title="Entrada de Mercancía (+ Stock)"
+                            data-bs-toggle="modal" data-bs-target="#restockModal" data-id="{{ product.id }}"
+                            data-name="{{ product.name }}" data-units="{{ product.units_per_box }}">
+                            <i class="bi bi-box-arrow-in-down"></i>
+                        </button>
+                        <button class="btn btn-link btn-sm p-0 text-secondary ms-2" title="Subir Imagen JPG/PNG"
+                            onclick="document.getElementById('imgUpload_{{ product.id }}').click()">
+                            <i class="bi bi-camera"></i>
+                        </button>
+                        <input type="file" id="imgUpload_{{ product.id }}" class="d-none"
+                            accept="image/jpeg, image/png, image/webp"
+                            onchange="uploadProductImage({{ product.id }}, this)">
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if user.role.value == 'admin' %}
+<!-- Modal Nuevo Producto -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">Registrar Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body px-4">
+                <form id="addProductForm">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label small fw-semibold"
+                                title="Nombre completo del producto tal como aparecerá en el inventario y facturas">Nombre
+                                del Producto *</label>
+                            <input type="text" class="form-control form-control-sm" name="name" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Código de barras o referencia interna. Permite búsqueda rápida en el inventario">Código
+                                de Barras</label>
+                            <input type="text" class="form-control form-control-sm" name="barcode">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Tipo de producto: define cómo se agrupa en filtros y reportes">Categoría
+                                *</label>
+                            <select class="form-select form-select-sm" name="category" required>
+                                <option value="Aceite Mineral">Aceite Mineral</option>
+                                <option value="Semi-sintético">Semi-sintético</option>
+                                <option value="Sintético">Sintético</option>
+                                <option value="Filtro">Filtro</option>
+                                <option value="Aditivo">Aditivo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Fabricante o marca comercial del producto">Marca</label>
+                            <input type="text" class="form-control form-control-sm" name="brand">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Grado de viscosidad del aceite, ej: 15W40, 5W30. Dejar vacío para filtros y aditivos">Viscosidad</label>
+                            <input type="text" class="form-control form-control-sm" name="viscosity"
+                                placeholder="ej: 15W40">
+                        </div>
+                        <div class="col-12">
+                            <hr class="my-1">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Precio de compra del bulto completo en dólares. Se usa para calcular el Costo Promedio Ponderado (PMP)">Costo
+                                Bulto ($) *</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="box_price"
+                                id="modalBoxPrice" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Cantidad de unidades o litros que contiene el bulto. Se usa para calcular el costo unitario">Und
+                                por Bulto *</label>
+                            <input type="number" class="form-control form-control-sm" name="units_per_box"
+                                id="modalUnitsPerBox" value="12" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Cantidad inicial de unidades en almacén al registrar el producto">Stock
+                                Inicial</label>
+                            <input type="number" class="form-control form-control-sm" name="initial_stock" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Precio de venta al público en dólares. Si no se especifica, se calcula automáticamente con la fórmula: Costo + $15 margen + $1.50 logística">P.
+                                Venta ($)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm"
+                                name="retail_price_usd" id="modalRetail">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Se calcula automáticamente: Precio Venta − Costo Unitario PMP">Ganancia
+                                ($)</label>
+                            <input type="number" step="0.01"
+                                class="form-control form-control-sm bg-success-subtle text-success fw-bold"
+                                id="modalProfit" readonly placeholder="Auto">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Cantidad mínima en almacén. Si el stock baja de este número, se resalta en naranja como alerta">Min.
+                                Stock</label>
+                            <input type="number" class="form-control form-control-sm" name="min_stock" value="5">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Precio especial para clientes que compran en volumen (al mayor)">P. Mayorista
+                                ($)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm"
+                                name="wholesale_price_usd" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold"
+                                title="Precio exclusivo para distribuidores autorizados de LUBMOVIL">P. Distribuidor
+                                ($)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm"
+                                name="distributor_price_usd" value="0">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check me-3">
+                                <input type="checkbox" class="form-check-input" name="is_favorite" id="isFav">
+                                <label class="form-check-label small" for="isFav">Alta rotación</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary">Guardar Producto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Producto (Calculadora Ganancia) -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold">Modificar Producto</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body px-4 pt-2">
+                <div class="row g-2 mb-3 pb-3 border-bottom">
+                    <h6 class="text-primary small fw-bold text-uppercase mb-2">Datos Básicos</h6>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-semibold"
+                            title="Nombre completo del producto">Producto</label>
+                        <input type="text" id="editName" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Código de Barras</label>
+                        <input type="text" id="editBarcode" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Categoría</label>
+                        <select class="form-select form-select-sm" id="editCategory">
+                            <option value="Aceite Mineral">Aceite Mineral</option>
+                            <option value="Semi-sintético">Semi-sintético</option>
+                            <option value="Sintético">Sintético</option>
+                            <option value="Filtro">Filtro</option>
+                            <option value="Aditivo">Aditivo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Marca</label>
+                        <input type="text" id="editBrand" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Viscosidad</label>
+                        <input type="text" id="editViscosity" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <h6 class="text-primary small fw-bold text-uppercase mb-0 mt-1">Esquema de Precios</h6>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold"
+                            title="Costo Promedio Ponderado (PMP) por unidad. Se puede modificar manualmente.">Costo
+                            PMP ($)</label>
+                        <input type="number" step="0.01" id="editCost" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold"
+                            title="Precio de venta al público en dólares. La ganancia se recalcula automáticamente mientras escribes">P.
+                            Venta ($)</label>
+                        <input type="number" step="0.01" id="editRetail" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold"
+                            title="Ganancia neta por unidad = Precio Venta − Costo PMP. Se actualiza en tiempo real">Ganancia
+                            ($) <span class="text-success">●</span></label>
+                        <input type="text" id="editProfit"
+                            class="form-control form-control-sm bg-success-subtle text-success fw-bold" readonly>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold"
+                            title="Precio especial para clientes que compran en volumen (al mayor)">P. Mayorista
+                            ($)</label>
+                        <input type="number" step="0.01" id="editWholesale" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold"
+                            title="Precio exclusivo para distribuidores autorizados de LUBMOVIL">P. Distribuidor
+                            ($)</label>
+                        <input type="number" step="0.01" id="editDistributor" class="form-control form-control-sm">
+                    </div>
+                </div>
+                <p class="text-muted mt-3 mb-0" style="font-size:0.75rem;"><i class="bi bi-info-circle me-1"></i>La
+                    ganancia se calcula automáticamente mientras editas el precio de venta.</p>
+                <input type="hidden" id="editProductId">
+                <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="deleteBtnModal"
+                        title="Eliminar permanentemente este producto">
+                        <i class="bi bi-trash me-1"></i> Eliminar
+                    </button>
+                    <button id="saveEditBtn" class="btn btn-primary btn-sm">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Entrada de Mercancía (Restock) -->
+<div class="modal fade" id="restockModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold text-success"><i class="bi bi-box-arrow-in-down me-2"></i>Entrada de
+                    Stock</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3" id="restockName"></p>
+                <form id="restockForm">
+                    <input type="hidden" id="restockProductId">
+                    <input type="hidden" id="restockUnitsPerBox">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Cantidad Ingresada *</label>
+                        <input type="number" class="form-control form-control-sm" id="restockQty" required min="1"
+                            placeholder="Ej. 12, 24, 48...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Costo Bulto Actual ($) *</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" id="restockBoxPrice"
+                            required placeholder="Precio a cómo compraste el bulto">
+                    </div>
+                    <div class="alert alert-info py-2" style="font-size: 0.75rem;">
+                        <i class="bi bi-info-circle me-1"></i> El sistema recalculará automáticamente el Costo PMP con
+                        este nuevo ingreso.
+                    </div>
+                    <div class="d-grid mt-2">
+                        <button type="submit" class="btn btn-success btn-sm">Guardar Entrada</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Toast de notificación -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+    <div id="appToast" class="toast align-items-center text-white border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body fw-semibold" id="toastMsg"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ─── Toast ───────────────────────────────────────────────
+    function showToast(msg, type = 'success') {
+        const el = document.getElementById('appToast');
+        const msgEl = document.getElementById('toastMsg');
+        el.className = `toast align-items-center text-white border-0 bg-${type}`;
+        msgEl.textContent = msg;
+        bootstrap.Toast.getOrCreateInstance(el, { delay: 3000 }).show();
+    }
+
+    // ─── Buscador + Filtros ───────────────────────────────────
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filterTable();
+        });
+    });
+    function filterTable() {
+        const q = document.getElementById('searchInput').value.toLowerCase().trim();
+        const cat = document.querySelector('.filter-btn.active')?.getAttribute('data-cat') || 'all';
+        document.querySelectorAll('.product-row').forEach(row => {
+            const nameMatch = row.getAttribute('data-name').includes(q);
+            const barcodeMatch = row.getAttribute('data-barcode').includes(q);
+            let catMatch = false;
+            if (cat === 'all') {
+                catMatch = true;
+            } else {
+                const cats = cat.split('|');
+                const rowCat = row.getAttribute('data-cat');
+                catMatch = cats.some(c => rowCat.includes(c));
+            }
+            row.style.display = (nameMatch || barcodeMatch) && catMatch ? '' : 'none';
+        });
+    }
+
+    // ─── Ordenamiento de Columnas ─────────────────────────────
+    let sortDirection = {};
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const table = document.getElementById('inventoryTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('.product-row'));
+            setupSort(th, rows, tbody);
+        });
+    });
+
+    function setupSort(headerElement, rows, tbody) {
+        const sortKey = headerElement.getAttribute('data-sort');
+        const sortType = headerElement.getAttribute('data-type') || 'string';
+
+        // Toggle direction
+        sortDirection[sortKey] = !sortDirection[sortKey];
+        const isAsc = sortDirection[sortKey];
+
+        // Update icons
+        document.querySelectorAll('.sortable i').forEach(icon => {
+            icon.className = 'bi bi-arrow-down-up text-muted ms-1';
+        });
+        const icon = headerElement.querySelector('i');
+        icon.className = isAsc ? 'bi bi-arrow-up text-primary ms-1' : 'bi bi-arrow-down text-primary ms-1';
+
+        rows.sort((a, b) => {
+            let valA = a.getAttribute(`data-${sortKey}`);
+            let valB = b.getAttribute(`data-${sortKey}`);
+
+            if (sortKey === 'category') {
+                valA = a.getAttribute('data-cat');
+                valB = b.getAttribute('data-cat');
+            }
+
+            if (sortType === 'number') {
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+                return isAsc ? valA - valB : valB - valA;
+            } else {
+                valA = (valA || '').toLowerCase();
+                valB = (valB || '').toLowerCase();
+                if (valA < valB) return isAsc ? -1 : 1;
+                if (valA > valB) return isAsc ? 1 : -1;
+                return 0;
+            }
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    {% if user.role.value == 'admin' %}
+    // ─── Calculadora en tiempo real (Modal Nuevo) ─────────────
+    function updateNewProfit() {
+        const boxPrice = parseFloat(document.getElementById('modalBoxPrice').value) || 0;
+        const units = parseInt(document.getElementById('modalUnitsPerBox').value) || 1;
+        const retail = parseFloat(document.getElementById('modalRetail').value) || 0;
+        const cost = units > 0 ? boxPrice / units : 0;
+        document.getElementById('modalProfit').value = (retail - cost).toFixed(2);
+    }
+    document.getElementById('modalBoxPrice')?.addEventListener('input', updateNewProfit);
+    document.getElementById('modalUnitsPerBox')?.addEventListener('input', updateNewProfit);
+    document.getElementById('modalRetail')?.addEventListener('input', updateNewProfit);
+
+    // ─── Calculadora en tiempo real (Modal Editar) ────────────
+    document.getElementById('editRetail')?.addEventListener('input', () => {
+        const cost = parseFloat(document.getElementById('editCost').value) || 0;
+        const retail = parseFloat(document.getElementById('editRetail').value) || 0;
+        document.getElementById('editProfit').value = (retail - cost).toFixed(2);
+    });
+
+    // ─── EDITAR PRODUCTO (PUT) ──────────────────────────────
+    document.getElementById('editModal')?.addEventListener('show.bs.modal', e => {
+        const btn = e.relatedTarget;
+        const row = btn.closest('tr');
+        document.getElementById('editProductId').value = btn.getAttribute('data-id');
+
+        // Datos Básicos
+        document.getElementById('editName').value = btn.getAttribute('data-name');
+        document.getElementById('editBarcode').value = btn.getAttribute('data-barcode');
+        document.getElementById('editBrand').value = row.querySelector('.p-brand')?.value || '';
+        document.getElementById('editViscosity').value = row.querySelector('.p-viscosity')?.value || '';
+        const catNode = row.querySelector('.p-category');
+        if (catNode) {
+            document.getElementById('editCategory').value = catNode.getAttribute('data-value');
+        }
+
+        // Precios
+        const cost = parseFloat(btn.getAttribute('data-cost') || 0);
+        document.getElementById('editCost').value = cost.toFixed(2);
+        document.getElementById('editRetail').value = parseFloat(btn.getAttribute('data-retail') || 0).toFixed(2);
+        document.getElementById('editWholesale').value = parseFloat(btn.getAttribute('data-wholesale') || 0).toFixed(2);
+        document.getElementById('editDistributor').value = parseFloat(btn.getAttribute('data-distributor') || 0).toFixed(2);
+        calcEditProfit();
+    });
+
+    document.getElementById('editRetail').addEventListener('input', calcEditProfit);
+    document.getElementById('editCost').addEventListener('input', calcEditProfit);
+
+    function calcEditProfit() {
+        const c = parseFloat(document.getElementById('editCost').value) || 0;
+        const r = parseFloat(document.getElementById('editRetail').value) || 0;
+        const input = document.getElementById('editProfit');
+        input.value = (r - c).toFixed(2);
+        if (r - c < 0) {
+            input.classList.replace('text-success', 'text-danger');
+            input.classList.replace('bg-success-subtle', 'bg-danger-subtle');
+        } else {
+            input.classList.replace('text-danger', 'text-success');
+            input.classList.replace('bg-danger-subtle', 'bg-success-subtle');
+        }
+    }
+
+    document.getElementById('saveEditBtn')?.addEventListener('click', async e => {
+        const id = document.getElementById('editProductId').value;
+        const data = {
+            name: document.getElementById('editName').value,
+            barcode: document.getElementById('editBarcode').value || null,
+            brand: document.getElementById('editBrand').value || null,
+            viscosity: document.getElementById('editViscosity').value || null,
+            category: document.getElementById('editCategory').value,
+            average_unit_cost: parseFloat(document.getElementById('editCost').value) || 0,
+            retail_price_usd: parseFloat(document.getElementById('editRetail').value) || 0,
+            wholesale_price_usd: parseFloat(document.getElementById('editWholesale').value) || 0,
+            distributor_price_usd: parseFloat(document.getElementById('editDistributor').value) || 0
+        };
+
+        const btn = e.target;
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+
+        try {
+            const resp = await fetch(`/api/inventory/products/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (resp.ok) {
+                showToast('Producto actualizado correctamente', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                const err = await resp.json();
+                showToast('Error: ' + (err.detail || 'No se pudo guardar'), 'danger');
+            }
+        } catch (e) {
+            showToast('Error de conexión', 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Guardar Cambios';
+        }
+    });
+
+    // ─── CREAR nuevo producto (POST) ──────────────────────────
+    document.getElementById('addProductForm')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        const form = e.target;
+        const fd = new FormData(form);
+        const body = {
+            name: fd.get('name'),
+            barcode: fd.get('barcode') || null,
+            brand: fd.get('brand') || null,
+            viscosity: fd.get('viscosity') || null,
+            category: fd.get('category'),
+            box_price: parseFloat(fd.get('box_price')),
+            units_per_box: parseInt(fd.get('units_per_box')),
+            initial_stock: parseInt(fd.get('initial_stock')) || 0,
+            retail_price_usd: parseFloat(fd.get('retail_price_usd')) || null,
+            wholesale_price_usd: parseFloat(fd.get('wholesale_price_usd')) || 0,
+            distributor_price_usd: parseFloat(fd.get('distributor_price_usd')) || 0,
+            min_stock: parseInt(fd.get('min_stock')) || 5,
+            is_favorite: fd.get('is_favorite') === 'on'
+        };
+        const submitBtn = form.querySelector('[type=submit]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Guardando...';
+        try {
+            const resp = await fetch('/api/inventory/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(body)
+            });
+            if (resp.ok) {
+                showToast('Producto registrado exitosamente', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                const err = await resp.json();
+                showToast('Error: ' + (err.detail || 'No se pudo crear'), 'danger');
+            }
+        } catch (e) {
+            showToast('Error de conexión', 'danger');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Guardar Producto';
+        }
+    });
+
+    // ─── ELIMINAR producto (DELETE) ───────────────────────────
+    async function deleteProduct(id, name) {
+        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el producto "${name}"?\n\nEsta acción NO se puede deshacer.`)) return;
+
+        try {
+            const resp = await fetch(`/api/inventory/products/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (resp.ok) {
+                showToast('Producto eliminado', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                const err = await resp.json();
+                showToast('Error: ' + (err.detail || 'No se pudo eliminar'), 'danger');
+            }
+        } catch (e) {
+            showToast('Error de conexión', 'danger');
+        }
+    }
+
+    document.getElementById('deleteBtnModal')?.addEventListener('click', () => {
+        const id = document.getElementById('editProductId').value;
+        const name = document.getElementById('editName').value;
+        if (id && name) {
+            deleteProduct(id, name);
+        }
+    });
+
+    // ─── IMPORTAR CSV (POST) ──────────────────────────────────
+    document.getElementById('importCsvInput')?.addEventListener('change', async e => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        showToast('Subiendo archivo...', 'primary');
+        const fd = new FormData();
+        fd.append('file', file);
+
+        try {
+            const resp = await fetch('/api/inventory/import', {
+                method: 'POST',
+                credentials: 'include',
+                body: fd
+            });
+            if (resp.ok) {
+                const res = await resp.json();
+                showToast(`¡Importación completada! ${res.imported} productos creados.`, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                const err = await resp.json();
+                showToast('Error: ' + (err.detail || 'Fallo de importación'), 'danger');
+            }
+        } catch (error) {
+            showToast('Error de conexión', 'danger');
+        }
+        e.target.value = ''; // Reset
+    });
+
+    // ─── SUBIR IMAGEN (POST) ──────────────────────────────────
+    async function uploadProductImage(productId, inputElement) {
+        const file = inputElement.files[0];
+        if (!file) return;
+
+        showToast('Subiendo imagen...', 'primary');
+        const fd = new FormData();
+        fd.append('file', file);
+
+        try {
+            const resp = await fetch(`/api/inventory/products/${productId}/image`, {
+                method: 'POST',
+                credentials: 'include',
+                body: fd
+            });
+            if (resp.ok) {
+                showToast('Imagen actualizada', 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                const err = await resp.json();
+                showToast('Error: ' + (err.detail || 'Fallo al subir'), 'danger');
+            }
+        } catch (error) {
+            showToast('Error de conexión', 'danger');
+        }
+        inputElement.value = ''; // Reset
+    }
+
+    // ─── RE-STOCK PRODUCTO (POST) ─────────────────────────────
+    document.getElementById('restockModal')?.addEventListener('show.bs.modal', e => {
+        const btn = e.relatedTarget;
+        document.getElementById('restockProductId').value = btn.getAttribute('data-id');
+        document.getElementById('restockName').textContent = btn.getAttribute('data-name');
+        document.getElementById('restockUnitsPerBox').value = btn.getAttribute('data-units');
+        document.getElementById('restockQty').value = '';
+        document.getElementById('restockBoxPrice').value = '';
+    });
+
+    document.getElementById('restockForm')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        const productId = document.getElementById('restockProductId').value;
+        const qty = parseInt(document.getElementById('restockQty').value);
+        const boxPrice = parseFloat(document.getElementById('restockBoxPrice').value);
+
+        const submitBtn = e.target.querySelector('[type=submit]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Guardando...';
+
+        try {
+            const resp = await fetch(`/api/inventory/products/${productId}/stock?quantity=${qty}&box_price=${boxPrice}`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            if (resp.ok) {
+                showToast('Mercancía ingresada y PMP actualizado', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('restockModal')).hide();
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                const err = await resp.json();
+                showToast('Error: ' + (err.detail || 'Fallo al ingresar mercancía'), 'danger');
+            }
+        } catch (error) {
+            showToast('Error de conexión', 'danger');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Guardar Entrada';
+        }
+    });
+
+    {% endif %}
+</script>
+{% endblock %}

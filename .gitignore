@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+
+# Database
+*.sqlite3
+*.db
+lubmovil.db
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.vscode/
+
+# Ignore static uploads if necessary (optional)
+# app/static/product_images/

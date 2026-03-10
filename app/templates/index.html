@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Panel de Control{% endblock %}
+
+{% block content %}
+<!-- Header Sección -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div>
+                <h2 class="fw-bold mb-0">Dashboard Operativo</h2>
+                <p class="text-muted small mb-0">LUBMOVIL v2.0 - Gestión en Tiempo Real</p>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-white text-dark border shadow-sm p-2 rounded-3">
+                    <i class="bi bi-person-badge text-primary me-2"></i>{{ user.role.value | capitalize }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Panel de Tasas Estilo BCV -->
+    <div class="col-12 col-lg-7">
+        <div class="card glass border-0 shadow-lg h-100 overflow-hidden">
+            <div class="card-header bg-white bg-opacity-50 border-0 pt-4 pb-0 text-center">
+                <div class="mb-2">
+                    <img src="https://www.bcv.org.ve/sites/default/files/logo_bcv.png" alt="BCV"
+                        style="height: 60px; filter: grayscale(1) brightness(0.5);">
+                </div>
+                <h5 class="fw-bold text-uppercase tracking-wider mb-1" style="color: #1e3a8a;">Tipo de Cambio de
+                    Referencia</h5>
+                <p class="text-muted x-small mb-3">Promedio ponderado resultante de las operaciones diarias</p>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle mb-0">
+                        <tbody style="font-size: 1.1rem;">
+                            <!-- Euro -->
+                            <tr class="border-bottom border-light">
+                                <td class="py-3 text-center" style="width: 60px;"><i
+                                        class="bi bi-currency-euro fs-4 text-dark"></i></td>
+                                <td class="py-3 fw-semibold text-primary">Bs / EUR</td>
+                                <td class="py-3 text-end font-monospace fw-bold" style="font-size: 1.4rem;">{{
+                                    "%.2f"|format(rates.eur_oficial) if rates.eur_oficial else "0.00" }}</td>
+                            </tr>
+                            <!-- Dólar Oficial -->
+                            <tr class="border-bottom border-light">
+                                <td class="py-3 text-center"><i class="bi bi-currency-dollar fs-4 text-dark"></i></td>
+                                <td class="py-3 fw-semibold text-primary">Bs / USD (BCV)</td>
+                                <td class="py-3 text-end font-monospace fw-bold" style="font-size: 1.4rem;">{{
+                                    "%.2f"|format(rates.usd_oficial) if rates.usd_oficial else "0.00" }}</td>
+                            </tr>
+                            <!-- Dólar Paralelo (Binance) -->
+                            <tr class="bg-primary bg-opacity-5 rounded-3">
+                                <td class="py-3 text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="#F3BA2F" style="margin-top: -4px;">
+                                        <path
+                                            d="M16.624 13.9202l2.7175 2.7154-7.353 7.353-7.353-7.352 2.7113-2.7113 4.6417 4.6437 4.6355-4.6488zm4.6499-4.6355l2.7154 2.7175-2.7133 2.7133-2.7133-2.7133 2.7112-2.7175zm-18.5634 0l2.7175 2.7175-2.7133 2.7134-2.7134-2.7134 2.7092-2.7175zm9.2954-9.2847l7.352 7.352-2.7113 2.7113-4.6417-4.6437-4.6355 4.6488-2.7175-2.7154 7.354-7.353z" />
+                                    </svg>
+                                </td>
+                                <td class="py-3 fw-semibold text-primary">Bs / USD (Paralelo / Binance)</td>
+                                <td class="py-3 text-end font-monospace fw-bold text-primary"
+                                    style="font-size: 1.4rem;">
+                                    {{ "%.2f"|format(rates.usd_paralelo) if rates.usd_paralelo else "0.00" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-4">
+                    <span class="badge bg-light text-muted fw-normal p-2 rounded-pill">
+                        <i class="bi bi-clock-history me-1"></i> Fecha Valor: {{ now }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Acciones y Estado -->
+    <div class="col-12 col-lg-5">
+        <div class="row g-4">
+            <!-- Card Mensaje Éxito -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm bg-primary text-white p-4 h-100">
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div class="bg-white bg-opacity-20 p-3 rounded-circle">
+                            <i class="bi bi-shield-check fs-2"></i>
+                        </div>
+                    </div>
+                    <h4 class="fw-bold">Módulo 1: Seguridad OK</h4>
+                    <p class="mb-4 opacity-75">Sesión activa protegida. Las tasas se sincronizan automáticamente desde
+                        DolarAPI en cada carga.</p>
+                    <button class="btn btn-outline-light rounded-pill px-4 mt-auto w-fit" disabled>
+                        Siguiente: Inventario <i class="bi bi-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Items de Stock Rápido (Placeholder) -->
+            <div class="col-12">
+                <div class="card glass border-0 shadow-sm p-4">
+                    <h6 class="fw-bold text-muted text-uppercase mb-3 small">Próximos Pasos</h6>
+                    <div class="d-flex flex-column gap-3">
+                        <div class="d-flex align-items-center opacity-50">
+                            <div class="bg-secondary p-2 rounded-2 me-3"><i class="bi bi-box-seam text-white"></i></div>
+                            <span>Cargar Inventario Inicial</span>
+                        </div>
+                        <div class="d-flex align-items-center opacity-50">
+                            <div class="bg-secondary p-2 rounded-2 me-3"><i class="bi bi-people text-white"></i></div>
+                            <span>Registrar Clientes</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
