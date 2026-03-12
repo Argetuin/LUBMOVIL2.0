@@ -104,11 +104,54 @@ async def crm_page(request: Request, db: Session = Depends(deps.get_db)):
         current_user = await deps.get_current_user(request, db)
         from app.crud import crm as crud_crm
         clients = crud_crm.get_clients(db)
+        
+        import json
+        clients_list = []
+        for c in clients:
+            c_dict = {
+                "id": c.id,
+                "full_name": c.full_name,
+                "phone": c.phone or "",
+                "address": c.address_reference or "",
+                "total_spent": float(c.total_spent_usd or 0.0),
+                "vehicles": []
+            }
+            for v in c.vehicles:
+                v_dict = {
+                    "id": v.id,
+                    "plate": v.plate,
+                    "brand": v.brand or "",
+                    "model": v.model or "",
+                    "year": v.year or "",
+                    "engine_type": v.engine_type or "",
+                    "recommended_viscosity": v.recommended_viscosity or "",
+                    "capacity": v.oil_capacity_qts or "",
+                    "filter_oil": v.filter_model_oil or "",
+                    "filter_air": v.filter_model_air or "",
+                    "odometer": v.current_odometer or "",
+                    "qr": v.qr_uuid,
+                    "service_count": v.service_count or 0,
+                    "service_records": []
+                }
+                for sr in v.service_records:
+                    v_dict["service_records"].append({
+                        "id": sr.id,
+                        "date": sr.date.isoformat() if sr.date else None,
+                        "odometer": sr.odometer_at_service,
+                        "service_type": sr.service_type,
+                        "total_cost": float(sr.total_cost_usd or 0.0),
+                        "payment_method": sr.payment_method or "",
+                        "notes": sr.notes_technician or ""
+                    })
+                c_dict["vehicles"].append(v_dict)
+            clients_list.append(c_dict)
+            
         return templates.TemplateResponse("crm.html", {
             "request": request,
             "user": current_user,
             "settings": settings,
-            "clients": clients
+            "clients": clients,
+            "clients_json": json.dumps(clients_list)
         })
     except HTTPException:
         return RedirectResponse(url="/login")

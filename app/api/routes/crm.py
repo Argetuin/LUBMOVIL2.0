@@ -51,9 +51,6 @@ def update_client(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user)
 ):
-    # Solo admin puede editar puntos de lealtad
-    if data.loyalty_points is not None and current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Solo admins pueden editar puntos de lealtad")
     client = crud_crm.get_client(db, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
@@ -129,7 +126,22 @@ def get_service_projection(
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehículo no encontrado")
     projection = crud_crm.project_next_service(
-        last_odometer=vehicle.last_odometer or 0,
+        last_odometer=vehicle.current_odometer or 0,
         last_service_date=vehicle.last_service_date or vehicle.created_at
     )
     return projection
+
+
+# ─── Servicios ─────────────────────────────────────────────────────────────────
+
+@router.post("/vehicles/{vehicle_id}/services", response_model=schemas.ServiceRecordResponse)
+def add_service_record(
+    vehicle_id: int,
+    data: schemas.ServiceRecordCreate,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    vehicle = crud_crm.get_vehicle(db, vehicle_id)
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    return crud_crm.create_service_record(db, vehicle_id, data, user_id=current_user.id)

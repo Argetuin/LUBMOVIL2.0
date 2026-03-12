@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from app.models.models import Client, Vehicle, VehicleStatus, AuditLog
-from app.schemas.schemas import ClientCreate, ClientUpdate, VehicleCreate, VehicleUpdate
+from app.models.models import Client, Vehicle, VehicleStatus, AuditLog, ServiceRecord
+from app.schemas.schemas import ClientCreate, ClientUpdate, VehicleCreate, VehicleUpdate, ServiceRecordCreate
 from datetime import datetime, timedelta
 from typing import List, Optional
 import uuid
+import json
 
 
 # ─── Utilidades ────────────────────────────────────────────────────────────────
@@ -98,7 +99,8 @@ def create_client(db: Session, data: ClientCreate, user_id: int) -> Client:
     db_client = Client(
         full_name=data.full_name.strip().title(),
         phone=phone_clean,
-        address=data.address
+        email=data.email,
+        address_reference=data.address_reference
     )
     db.add(db_client)
     db.flush()  # Para obtener el id antes del commit
@@ -165,11 +167,12 @@ def _create_vehicle_obj(db: Session, client_id: int, data: VehicleCreate) -> Veh
         brand=data.brand,
         model=data.model,
         year=data.year,
-        engine_v=data.engine_v,
-        oil_capacity_liters=data.oil_capacity_liters,
+        engine_type=data.engine_type,
+        oil_capacity_qts=data.oil_capacity_qts,
         recommended_viscosity=data.recommended_viscosity,
-        filter_code=data.filter_code,
-        last_odometer=data.last_odometer
+        filter_model_oil=data.filter_model_oil,
+        filter_model_air=data.filter_model_air,
+        current_odometer=data.current_odometer
     )
     db.add(db_vehicle)
     return db_vehicle
@@ -211,3 +214,47 @@ def delete_vehicle(db: Session, db_vehicle: Vehicle, user_id: int):
     )
     db.add(audit)
     db.commit()
+
+
+# ─── Service Records ──────────────────────────────────────────────────────────
+
+def create_service_record(db: Session, vehicle_id: int, data: ServiceRecordCreate, user_id: int) -> ServiceRecord:
+    # Crear el registro
+    sr = ServiceRecord(
+        vehicle_id=vehicle_id,
+        odometer_at_service=data.odometer_at_service,
+        service_type=data.service_type,
+        products_json=data.products_json,
+        total_cost_usd=data.total_cost_usd,
+        payment_method=data.payment_method,
+        notes_technician=data.notes_technician
+    )
+    db.add(sr)
+    
+    # Actualizar el vehículo (odómetro, fecha y sumar al contador de servicios)
+    v = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if v:
+        v.current_odometer = data.odometer_at_service
+        v.last_service_date = sr.date
+        v.service_count = (v.service_count or 0) + 1
+        
+        # Validar lealtad (cada 5 servicios)
+        if v.service_count % 5 == 0:
+            sr.is_loyalty_applied = True
+            
+        # Sumar el gasto total del servicio al cliente
+        c = db.query(Client).filter(Client.id == v.client_id).first()
+        if c and data.total_cost_usd:
+            c.total_spent_usd = (c.total_spent_usd or 0.0) + data.total_cost_usd
+
+    # Registrar en auditoría
+    plate = v.plate if v else str(vehicle_id)
+    audit = AuditLog(
+        user_id=user_id, action="CREATE_SERVICE",
+        description=f"Servicio ({data.service_type}) registrado para el vehículo {plate}"
+    )
+    db.add(audit)
+    
+    db.commit()
+    db.refresh(sr)
+    return sr

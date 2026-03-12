@@ -78,42 +78,48 @@
         </div>
     </div>
 
-    <!-- Panel de Acciones y Estado -->
+    <!-- Panel de Acciones Rápidas -->
     <div class="col-12 col-lg-5">
-        <div class="row g-4">
-            <!-- Card Mensaje Éxito -->
-            <div class="col-12">
-                <div class="card border-0 shadow-sm bg-primary text-white p-4 h-100">
-                    <div class="d-flex align-items-start justify-content-between mb-3">
-                        <div class="bg-white bg-opacity-20 p-3 rounded-circle">
-                            <i class="bi bi-shield-check fs-2"></i>
-                        </div>
-                    </div>
-                    <h4 class="fw-bold">Módulo 1: Seguridad OK</h4>
-                    <p class="mb-4 opacity-75">Sesión activa protegida. Las tasas se sincronizan automáticamente desde
-                        DolarAPI en cada carga.</p>
-                    <button class="btn btn-outline-light rounded-pill px-4 mt-auto w-fit" disabled>
-                        Siguiente: Inventario <i class="bi bi-arrow-right ms-2"></i>
-                    </button>
-                </div>
-            </div>
+        <div class="h-100 d-flex flex-column gap-3">
 
-            <!-- Items de Stock Rápido (Placeholder) -->
-            <div class="col-12">
-                <div class="card glass border-0 shadow-sm p-4">
-                    <h6 class="fw-bold text-muted text-uppercase mb-3 small">Próximos Pasos</h6>
-                    <div class="d-flex flex-column gap-3">
-                        <div class="d-flex align-items-center opacity-50">
-                            <div class="bg-secondary p-2 rounded-2 me-3"><i class="bi bi-box-seam text-white"></i></div>
-                            <span>Cargar Inventario Inicial</span>
+            <a href="/inventory" class="text-decoration-none flex-fill">
+                <div class="card border-0 shadow-sm h-100 d-flex flex-row align-items-stretch overflow-hidden"
+                    style="border-radius:.75rem;">
+                    <div style="width:6px;background:#2563eb;flex-shrink:0;"></div>
+                    <div class="d-flex align-items-center gap-3 p-4 flex-grow-1 bg-white">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                            style="width:52px;height:52px;background:#eff6ff;">
+                            <i class="bi bi-box-seam fs-3 text-primary"></i>
                         </div>
-                        <div class="d-flex align-items-center opacity-50">
-                            <div class="bg-secondary p-2 rounded-2 me-3"><i class="bi bi-people text-white"></i></div>
-                            <span>Registrar Clientes</span>
+                        <div>
+                            <h6 class="fw-bold mb-1 text-dark">Módulo de Inventario</h6>
+                            <p class="mb-0 text-muted" style="font-size:.78rem;">Precios · Stock · PMP · Importar /
+                                Exportar</p>
                         </div>
+                        <i class="bi bi-chevron-right ms-auto text-muted"></i>
                     </div>
                 </div>
-            </div>
+            </a>
+
+            <a href="/crm" class="text-decoration-none flex-fill">
+                <div class="card border-0 shadow-sm h-100 d-flex flex-row align-items-stretch overflow-hidden"
+                    style="border-radius:.75rem;">
+                    <div style="width:6px;background:#059669;flex-shrink:0;"></div>
+                    <div class="d-flex align-items-center gap-3 p-4 flex-grow-1 bg-white">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                            style="width:52px;height:52px;background:#ecfdf5;">
+                            <i class="bi bi-people fs-3 text-success"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-1 text-dark">CRM de Clientes</h6>
+                            <p class="mb-0 text-muted" style="font-size:.78rem;">Clientes · Vehículos · Historial · QR
+                            </p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                    </div>
+                </div>
+            </a>
+
         </div>
     </div>
 </div>

@@ -105,9 +105,9 @@ class Client(Base):
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, index=True, nullable=False)
     phone = Column(String, index=True)          # Formato internacional ej: 584121234567
-    address = Column(String)                     # Zona/Sector
-    total_spent = Column(Float, default=0.0)     # Acumulativo en USD
-    loyalty_points = Column(Integer, default=0)
+    email = Column(String, nullable=True)
+    address_reference = Column(String)                     # Zona/Sector
+    total_spent_usd = Column(Float, default=0.0)     # Acumulativo en USD
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vehicles = relationship("Vehicle", back_populates="client", cascade="all, delete-orphan")
@@ -142,15 +142,43 @@ class Vehicle(Base):
     brand = Column(String)
     model = Column(String)
     year = Column(Integer)
-    engine_v = Column(String)                   # Ej: "1.6", "5.7"
+    engine_type = Column(String)                   # Ej: "1.6", "5.7"
 
     # Ficha Técnica Pro
-    oil_capacity_liters = Column(Float)         # Capacidad en litros
+    oil_capacity_qts = Column(Float)            # Capacidad en Qts/Litros
     recommended_viscosity = Column(String)      # Ej: "15W40", "5W30"
-    filter_code = Column(String)                # Código del filtro
-    last_odometer = Column(Integer)             # Último KM registrado
-    last_service_date = Column(DateTime)        # Fecha del último cambio
+    filter_model_oil = Column(String)           # Código del filtro de aceite
+    filter_model_air = Column(String)           # Código del filtro de aire
+
+    # Estado Actual
+    current_odometer = Column(Integer, default=0)             # Último KM registrado
+    last_service_date = Column(DateTime, nullable=True)        # Fecha del último cambio
+    service_count = Column(Integer, default=0)                 # Contador para programa de lealtad
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
     client = relationship("Client", back_populates="vehicles")
+    service_records = relationship("ServiceRecord", back_populates="vehicle", cascade="all, delete-orphan", order_by="desc(ServiceRecord.date)")
+
+
+class ServiceRecord(Base):
+    __tablename__ = "service_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False)
+    date = Column(DateTime, default=datetime.utcnow)
+    
+    # Datos de este evento específico
+    odometer_at_service = Column(Integer, nullable=False)
+    service_type = Column(String, default="Cambio de Aceite")
+    
+    # Guarda un resumen JSON de los repuestos consumidos Ej: [{"product_id": 1, "name": "Aceite 15w40", "qty": 4}]
+    products_json = Column(String, nullable=True)
+    
+    total_cost_usd = Column(Float, default=0.0)
+    payment_method = Column(String, nullable=True)
+    notes_technician = Column(String, nullable=True)
+    
+    is_loyalty_applied = Column(Boolean, default=False)
+
+    vehicle = relationship("Vehicle", back_populates="service_records")

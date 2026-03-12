@@ -1,212 +1,297 @@
 {% extends "base.html" %}
-{% block title %}CRM — Clientes{% endblock %}
+{% block title %}CRM Elite — Clientes y Vehículos{% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-        <h4 class="fw-bold mb-0">CRM — Clientes & Vehículos</h4>
-        <small class="text-muted">{{ clients|length }} clientes registrados</small>
-    </div>
-    <button class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#addClientModal">
-        <i class="bi bi-person-plus-fill me-1"></i> Nuevo
-    </button>
-</div>
+<style>
+    /* Estilos Específicos CRM Elite */
+    .crm-container {
+        height: calc(100vh - 86px);
+        display: flex;
+        overflow: hidden;
+    }
 
-<!-- Buscador Smart -->
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-body p-3">
-        <div class="input-group input-group-sm">
-            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" id="crmSearch" class="form-control border-start-0 ps-0"
-                placeholder="Buscar por nombre, teléfono o placa…">
-            <span class="input-group-text bg-white border-start-0 text-muted" style="font-size:0.72rem;">
-                <i class="bi bi-lightning-fill text-warning me-1"></i>Smart
-            </span>
-        </div>
-    </div>
-</div>
+    .client-list-panel {
+        width: 350px;
+        background: #fff;
+        border-right: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+    }
 
-<!-- Lista de clientes (Acordeón) -->
-<div id="clientList">
-    {% if not clients %}
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-people display-4 d-block mb-2 opacity-25"></i>
-        Sin clientes registrados. ¡Agrega el primero!
-    </div>
-    {% endif %}
+    .client-detail-panel {
+        flex-grow: 1;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
 
-    {% for client in clients %}
-    <div class="card border-0 shadow-sm mb-2 client-card" data-name="{{ client.full_name | lower }}"
-        data-phone="{{ client.phone or '' }}"
-        data-plates="{{ client.vehicles | map(attribute='plate') | join(' ') | lower }}">
-        <!-- Encabezado cliente -->
-        <div class="card-body p-3">
-            <div class="d-flex align-items-center gap-2">
-                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 text-white fw-bold"
-                    style="width:40px;height:40px;font-size:1rem;background:linear-gradient(135deg,#2563eb,#7c3aed);">
-                    {{ client.full_name[0].upper() }}
-                </div>
-                <div class="flex-grow-1 min-w-0">
-                    <div class="fw-semibold" style="font-size:0.9rem;">{{ client.full_name }}</div>
-                    <div class="text-muted" style="font-size:0.75rem;">
-                        {% if client.phone %}<i class="bi bi-telephone me-1"></i>{{ client.phone }}{% endif %}
-                        {% if client.address %} · <i class="bi bi-geo-alt me-1"></i>{{ client.address }}{% endif %}
-                    </div>
-                </div>
-                <!-- Badges -->
-                <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                    <span class="badge bg-primary-subtle text-primary rounded-1" style="font-size:0.65rem;">
-                        <i class="bi bi-car-front me-1"></i>{{ client.vehicles|length }}
-                    </span>
-                    {% if client.loyalty_points > 0 %}
-                    <span class="badge bg-warning-subtle text-warning rounded-1" style="font-size:0.65rem;"
-                        title="Puntos de lealtad">
-                        <i class="bi bi-star-fill me-1"></i>{{ client.loyalty_points }}
-                    </span>
-                    {% endif %}
-                    <!-- Acciones rápidas -->
-                    {% if client.phone %}
-                    <a href="tel:{{ client.phone }}" class="btn btn-outline-secondary btn-sm p-1" title="Llamar"
-                        style="font-size:0.7rem;line-height:1;"><i class="bi bi-telephone"></i></a>
-                    <a href="https://wa.me/{{ client.phone }}" target="_blank"
-                        class="btn btn-outline-success btn-sm p-1" title="WhatsApp"
-                        style="font-size:0.7rem;line-height:1;">
-                        <i class="bi bi-whatsapp"></i></a>
-                    {% endif %}
-                    <button class="btn btn-sm p-1 btn-outline-secondary" style="font-size:0.72rem;"
-                        data-bs-toggle="collapse" data-bs-target="#vehicles-{{ client.id }}" title="Ver vehículos">
-                        <i class="bi bi-chevron-down"></i>
-                    </button>
-                </div>
+    .search-header {
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+    }
+
+    .clients-scroll {
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    .client-item {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .client-item:hover {
+        background: #f8fafc;
+    }
+
+    .client-item.active {
+        background: #eff6ff;
+        border-left: 3px solid #2563eb;
+    }
+
+    .client-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        flex-shrink: 0;
+    }
+
+    .client-info-compact p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .client-info-compact h6 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .detalle-header {
+        padding: 1.5rem;
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .detalle-body {
+        padding: 1.5rem;
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    .vehicle-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .vehicle-card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transform: translateY(-2px);
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-left: 2rem;
+        padding-bottom: 1.5rem;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0.25rem;
+        bottom: -0.25rem;
+        width: 2px;
+        background: #e2e8f0;
+    }
+
+    .timeline-item:last-child::before {
+        display: none;
+    }
+
+    .timeline-dot {
+        position: absolute;
+        left: 0;
+        top: 0.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 50%;
+        background: #3b82f6;
+        border: 3px solid #eff6ff;
+    }
+
+    .stat-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-box .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-box .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: #64748b;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    /* Ocultar barra de scroll en Webkit pero mantener scrollable */
+    .clients-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .clients-scroll::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 10px;
+    }
+
+    .empty-state {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+    }
+</style>
+
+<div class="crm-container shadow-sm rounded border">
+    <!-- PANEL IZQUIERDO: DIRECTORIO -->
+    <div class="client-list-panel">
+        <div class="search-header">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark">Directorio CRM</h5>
+                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal"
+                    data-bs-target="#addClientModal">
+                    <i class="bi bi-person-plus-fill me-1"></i> Nuevo
+                </button>
             </div>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="crmSearch" class="form-control border-start-0 bg-light"
+                    placeholder="Nombre, teléfono, placa...">
+            </div>
+        </div>
 
-            <!-- Vehículos (Acordeón) -->
-            <div class="collapse mt-3" id="vehicles-{{ client.id }}">
-                {% if not client.vehicles %}
-                <div class="text-center py-2 text-muted" style="font-size:0.8rem;">
-                    Sin vehículos registrados.
-                    <a href="#" onclick="openAddVehicle({{ client.id }}, '{{ client.full_name }}')"
-                        class="text-primary">Agregar</a>
+        <div class="clients-scroll" id="clientListContainer">
+            {% if not clients %}
+            <div class="p-4 text-center text-muted small">
+                <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                No hay clientes registrados.
+            </div>
+            {% endif %}
+
+            {% for client in clients %}
+            <div class="client-item" onclick="loadClientDetail({{ client.id }})" id="client-item-{{ client.id }}"
+                data-name="{{ client.full_name | lower }}" data-phone="{{ client.phone or '' }}"
+                data-plates="{{ client.vehicles | map(attribute='plate') | join(' ') | lower }}">
+                <div class="client-avatar">{{ client.full_name[0].upper() }}</div>
+                <div class="client-info-compact flex-grow-1">
+                    <h6>{{ client.full_name }}</h6>
+                    <p>
+                        {% if client.phone %}<i class="bi bi-telephone ms-0 me-1"></i>{{ client.phone }}{% endif %}
+                        {% if client.address_reference %} · <i class="bi bi-geo-alt mx-1"></i>{{
+                        client.address_reference|truncate(15) }}{% endif %}
+                    </p>
                 </div>
+                {% if client.vehicles|length > 0 %}
+                <span class="badge bg-secondary rounded-pill bg-opacity-10 text-secondary border">{{
+                    client.vehicles|length }}<i class="bi bi-car-front ms-1"></i></span>
                 {% endif %}
-                {% for v in client.vehicles %}
-                <div class="border rounded-2 p-3 mb-2 bg-light">
-                    <div class="d-flex align-items-start justify-content-between gap-2">
-                        <!-- Tipo + Placa -->
-                        <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <span class="badge rounded-1 fw-bold"
-                                    style="font-size:0.72rem;background:{% if v.type.value=='Moto' %}#f59e0b{% elif v.type.value=='Camioneta' %}#10b981{% elif v.type.value=='Pesado' %}#ef4444{% else %}#2563eb{% endif %};">
-                                    {% if v.type.value == 'Moto' %}🏍{% elif v.type.value == 'Camioneta' %}🚙{% elif
-                                    v.type.value == 'Pesado' %}🚛{% else %}🚗{% endif %}
-                                    {{ v.type.value }}
-                                </span>
-                                <span class="font-monospace fw-bold" style="font-size:0.85rem;letter-spacing:1px;">
-                                    {{ v.plate }}
-                                </span>
-                                <span
-                                    class="badge rounded-1 {% if v.status.value=='Activo' %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-secondary{% endif %}"
-                                    style="font-size:0.65rem;">
-                                    {{ v.status.value }}
-                                </span>
-                            </div>
-                            <div class="text-muted" style="font-size:0.78rem;">
-                                {% if v.brand %}{{ v.brand }}{% endif %}
-                                {% if v.model %} {{ v.model }}{% endif %}
-                                {% if v.year %} ({{ v.year }}){% endif %}
-                                {% if v.engine_v %} · {{ v.engine_v }}L{% endif %}
-                            </div>
-                            <!-- Ficha Técnica -->
-                            <div class="d-flex flex-wrap gap-2 mt-2">
-                                {% if v.recommended_viscosity %}
-                                <span class="badge bg-blue-subtle border rounded-1"
-                                    style="font-size:0.68rem;color:#1d4ed8;">
-                                    🛢 {{ v.recommended_viscosity }}{% if v.oil_capacity_liters %} · {{
-                                    v.oil_capacity_liters }}L{% endif %}
-                                </span>
-                                {% endif %}
-                                {% if v.filter_code %}
-                                <span class="badge bg-light border rounded-1" style="font-size:0.68rem;color:#374151;">
-                                    🔩 Filtro: {{ v.filter_code }}
-                                </span>
-                                {% endif %}
-                                {% if v.last_odometer %}
-                                <span class="badge bg-light border rounded-1" style="font-size:0.68rem;color:#374151;">
-                                    🛣 {{ "{:,}".format(v.last_odometer) }} km
-                                </span>
-                                {% endif %}
-                                {% if v.last_service_date %}
-                                <span class="badge bg-light border rounded-1" style="font-size:0.68rem;color:#374151;">
-                                    📅 Último: {{ v.last_service_date.strftime('%d/%m/%Y') }}
-                                </span>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- QR + Acciones -->
-                        <div class="text-end flex-shrink-0">
-                            <!-- QR generado en JS (qrcode.js) -->
-                            <div id="qr-{{ v.qr_uuid }}" class="mb-1" data-uuid="{{ v.qr_uuid }}"
-                                style="width:60px;height:60px;"></div>
-                            <div class="d-flex gap-1 justify-content-end">
-                                <a href="/v/{{ v.qr_uuid }}" target="_blank" class="btn btn-outline-primary btn-sm p-1"
-                                    style="font-size:0.65rem;" title="Ver ficha pública">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
-                                <button class="btn btn-outline-success btn-sm p-1" style="font-size:0.65rem;"
-                                    title="Compartir por WhatsApp"
-                                    onclick="shareWhatsApp('{{ client.full_name }}', '{{ v.brand or '' }} {{ v.model or '' }}', '{{ v.qr_uuid }}', '{{ client.phone or '' }}')">
-                                    <i class="bi bi-whatsapp"></i>
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm p-1" style="font-size:0.65rem;"
-                                    title="Editar ficha"
-                                    onclick="openEditVehicle({{ v.id }}, '{{ v.plate }}', '{{ v.brand or '' }}', '{{ v.model or '' }}', {{ v.year or 'null' }}, '{{ v.recommended_viscosity or '' }}', {{ v.oil_capacity_liters or 'null' }}, '{{ v.filter_code or '' }}', {{ v.last_odometer or 'null' }})">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                                {% if user.role.value == 'admin' %}
-                                <button class="btn btn-outline-danger btn-sm p-1" style="font-size:0.65rem;"
-                                    title="Eliminar vehículo" onclick="deleteVehicle({{ v.id }}, '{{ v.plate }}')">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                {% endif %}
-                            </div>
-                            <div class="text-muted mt-1" style="font-size:0.6rem;">
-                                <i class="bi bi-qr-code me-1"></i>{{ v.qr_scan_count }} escaneos
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Botón Nuevo Servicio -->
-                    <div class="d-flex gap-2 mt-2 pt-2 border-top">
-                        <button class="btn btn-sm btn-primary flex-grow-1" style="font-size:0.75rem;"
-                            onclick="openEditVehicle({{ v.id }}, '{{ v.plate }}', '{{ v.brand or '' }}', '{{ v.model or '' }}', {{ v.year or 'null' }}, '{{ v.recommended_viscosity or '' }}', {{ v.oil_capacity_liters or 'null' }},'{{ v.filter_code or '' }}', {{ v.last_odometer or 'null' }})">
-                            <i class="bi bi-wrench me-1"></i> Registrar Servicio
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;"
-                            onclick="openAddVehicle({{ client.id }}, '{{ client.full_name }}')">
-                            <i class="bi bi-plus-lg me-1"></i> Otro Vehículo
-                        </button>
-                    </div>
-                </div>
-                {% endfor %}
             </div>
+            {% endfor %}
         </div>
     </div>
-    {% endfor %}
-</div><!-- #clientList -->
 
-<!-- ─── Toast ─────────────────────────────────────────────────────── -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
-    <div id="crmToast" class="toast align-items-center text-white border-0" role="alert">
-        <div class="d-flex">
-            <div class="toast-body fw-semibold" id="crmToastMsg"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    <!-- PANEL DERECHO: DETALLES -->
+    <div class="client-detail-panel" id="clientDetailPanel">
+        <!-- Vista vacía por defecto -->
+        <div class="empty-state" id="emptyStateDetail">
+            <i class="bi bi-journal-richtext display-1 mb-3 opacity-25"></i>
+            <h5>Seleccione un cliente</h5>
+            <p class="small">Haga clic en un cliente de la lista para ver su expediente, vehículos y registro de
+                servicios.</p>
+        </div>
+
+        <!-- Contenedor dinámico (se oculta al inicio) -->
+        <div id="detailContent" class="d-none h-100 d-flex flex-column">
+            <!-- Cabecera del Cliente -->
+            <div class="detalle-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="client-avatar fs-3" style="width:60px;height:60px;" id="detailAvatar">?</div>
+                    <div>
+                        <h4 class="fw-bold mb-1 text-dark" id="detailName">Cargando...</h4>
+                        <div class="text-muted small" id="detailContact">
+                            <!-- Contact details injected via JS -->
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-success rounded-pill px-3" id="btnWhatsapp"><i
+                                    class="bi bi-whatsapp"></i> WhatsApp</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-3">
+                    <div class="stat-box">
+                        <div class="value text-success" id="detailSpent">$0</div>
+                        <div class="label">Inversión Acumulada</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value" id="detailVehicleCount">0</div>
+                        <div class="label">Vehículos Registrados</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cuerpo/Vehículos -->
+            <div class="detalle-body bg-light">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold text-secondary mb-0"><i class="bi bi-ev-front me-2"></i>Flota del Cliente</h5>
+                    <button class="btn btn-primary btn-sm" id="btnAddVehicleBtn"><i class="bi bi-plus-lg me-1"></i>
+                        Agregar Vehículo</button>
+                </div>
+
+                <div id="vehiclesContainer">
+                    <!-- Vehículos inyectados aquí via JS -->
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- ─── Modal: Nuevo Cliente + Vehículo ───────────────────────────── -->
+<!-- INCLUIR MODALES -->
+<!-- Modal: Nuevo Cliente + Vehículo -->
 <div class="modal fade" id="addClientModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
@@ -222,51 +307,50 @@
                         Cliente</div>
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold" title="Nombre completo del cliente">Nombre
-                                *</label>
+                            <label class="form-label small fw-semibold">Nombre completo *</label>
                             <input type="text" class="form-control form-control-sm" name="full_name" required
-                                placeholder="Ej: Juan Pérez">
+                                placeholder="Ej: Juan Perez">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-semibold"
-                                title="Número de WhatsApp sin +, ej: 584121234567">Teléfono / WhatsApp</label>
+                            <label class="form-label small fw-semibold">WhatsApp</label>
                             <input type="text" class="form-control form-control-sm" name="phone"
                                 placeholder="584121234567">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-semibold" title="Zona o sector donde vive el cliente">Zona
-                                / Sector</label>
-                            <input type="text" class="form-control form-control-sm" name="address"
-                                placeholder="Ej: El Cafetal">
+                            <label class="form-label small fw-semibold">Email</label>
+                            <input type="email" class="form-control form-control-sm" name="email"
+                                placeholder="correo@ejemplo.com">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small fw-semibold">Dirección o Sector</label>
+                            <input type="text" class="form-control form-control-sm" name="address_reference"
+                                placeholder="Ej: Urbanización El Cafetal">
                         </div>
                     </div>
-
                     <hr class="my-2">
-
-                    <!-- Vehículo (opcional) -->
+                    <!-- Vehículo -->
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="small fw-bold text-uppercase text-muted" style="letter-spacing:1px;">🚗 Primer
-                            Vehículo</div>
+                        <div class="small fw-bold text-uppercase text-muted" style="letter-spacing:1px;">🚗 Vehículo
+                            Principal</div>
                         <div class="form-check form-switch mb-0">
                             <input class="form-check-input" type="checkbox" id="addVehicleToggle" checked>
-                            <label class="form-check-label small" for="addVehicleToggle">Agregar vehículo</label>
+                            <label class="form-check-label small" for="addVehicleToggle">Incluir al crear</label>
                         </div>
                     </div>
-                    <div id="vehicleFields">
+                    <div id="vehicleFields" class="bg-light p-3 rounded-3 border">
                         <div class="row g-2">
                             <div class="col-md-3">
-                                <label class="form-label small fw-semibold"
-                                    title="Placa del vehículo — se normalizará automáticamente">Placa *</label>
+                                <label class="form-label small fw-semibold">Placa *</label>
                                 <input type="text" class="form-control form-control-sm font-monospace text-uppercase"
                                     name="v_plate" placeholder="AA000BB">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold">Tipo</label>
                                 <select class="form-select form-select-sm" name="v_type">
-                                    <option value="Carro">🚗 Carro</option>
-                                    <option value="Camioneta">🚙 Camioneta</option>
-                                    <option value="Moto">🏍 Moto</option>
-                                    <option value="Pesado">🚛 Pesado</option>
+                                    <option value="Carro">Carro</option>
+                                    <option value="Camioneta">Camioneta</option>
+                                    <option value="Moto">Moto</option>
+                                    <option value="Pesado">Pesado</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -279,48 +363,48 @@
                                 <input type="text" class="form-control form-control-sm" name="v_model"
                                     placeholder="Corolla">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-semibold" title="Año del vehículo">Año</label>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Año</label>
                                 <input type="number" class="form-control form-control-sm" name="v_year"
-                                    placeholder="2018" min="1990" max="2030">
+                                    placeholder="2018">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-semibold" title="Motor en litros, ej: 1.6">Motor
-                                    (L)</label>
-                                <input type="text" class="form-control form-control-sm" name="v_engine"
-                                    placeholder="1.6">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Motor (L)</label>
+                                <input type="text" class="form-control form-control-sm" name="v_engine_type"
+                                    placeholder="1.8">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-semibold"
-                                    title="Viscosidad recomendada por el fabricante">Viscosidad</label>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Viscosidad</label>
                                 <input type="text" class="form-control form-control-sm text-uppercase"
-                                    name="v_viscosity" placeholder="15W40">
+                                    name="v_recommended_viscosity" placeholder="15W40">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-semibold"
-                                    title="Litros de aceite que requiere el motor">Capacidad (L)</label>
-                                <input type="number" step="0.5" class="form-control form-control-sm" name="v_capacity"
-                                    placeholder="4.0">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Capacidad Aceite (Qts/L)</label>
+                                <input type="number" step="0.1" class="form-control form-control-sm"
+                                    name="v_oil_capacity_qts" placeholder="4">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-semibold"
-                                    title="Código de referencia del filtro de aceite">Filtro</label>
-                                <input type="text" class="form-control form-control-sm text-uppercase" name="v_filter"
-                                    placeholder="PH6607">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Filtro Aceite</label>
+                                <input type="text" class="form-control form-control-sm text-uppercase"
+                                    name="v_filter_model_oil" placeholder="PH3950">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-semibold" title="Kilómetros actuales del vehículo">KM
-                                    Actual</label>
-                                <input type="number" class="form-control form-control-sm" name="v_odometer"
-                                    placeholder="85000">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Filtro Aire</label>
+                                <input type="text" class="form-control form-control-sm text-uppercase"
+                                    name="v_filter_model_air" placeholder="CA10190">
+                            </div>
+                            <div class="col-md-4">
+                                <label
+                                    class="form-label small fw-semibold text-primary d-flex align-items-center gap-1"><i
+                                        class="bi bi-speedometer2"></i> Odómetro Actual</label>
+                                <input type="number" class="form-control form-control-sm border-primary"
+                                    name="v_current_odometer" placeholder="120000">
                             </div>
                         </div>
                     </div>
-
                     <div class="d-grid mt-4">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check2-circle me-1"></i> Guardar Cliente
-                        </button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> Guardar
+                            Cliente y Expediente</button>
                     </div>
                 </form>
             </div>
@@ -328,174 +412,327 @@
     </div>
 </div>
 
-<!-- ─── Modal: Agregar Vehículo a Cliente Existente ──────────────── -->
+<!-- Modal: Registro de Servicio Técnico -->
+<div class="modal fade" id="addServiceModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0">
+                <h6 class="modal-title fw-bold"><i class="bi bi-tools me-2 text-warning"></i>Registrar Servicio — <span
+                        id="serviceModalPlate" class="font-monospace text-warning"></span></h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body px-4 bg-light">
+                <form id="addServiceForm">
+                    <input type="hidden" id="serviceVehicleId" name="vehicle_id">
+
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body p-3">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-secondary">Odómetro al momento de
+                                        servicio *</label>
+                                    <input type="number"
+                                        class="form-control form-control-lg border-primary text-primary fw-bold text-center"
+                                        name="odometer_at_service" required placeholder="Ej: 125000">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-secondary">Tipo de Servicio</label>
+                                    <select class="form-select form-select-lg" name="service_type" required>
+                                        <option value="Cambio de Aceite Básico">Cambio de Aceite Básico</option>
+                                        <option value="Mantenimiento Preventivo Completo">Mantenimiento Preventivo
+                                            Completo</option>
+                                        <option value="Revisión General">Revisión General</option>
+                                        <option value="Solo Filtros">Solo Filtros</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-white border-bottom-0 pb-0 pt-3">
+                            <h6 class="fw-bold text-dark m-0"><i class="bi bi-box-seam me-2"></i>Productos Utilizados
+                            </h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row g-2">
+                                <div class="col-md-8">
+                                    <label class="form-label small text-muted">Aceite Aplicado (Marca y
+                                        Viscosidad)</label>
+                                    <input type="text" class="form-control form-control-sm text-uppercase"
+                                        id="serviceOilUsed" placeholder="Ej: MOBIL 1 15W40 SINTÉTICO (4 LTS)">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">Filtro Instalado</label>
+                                    <input type="text" class="form-control form-control-sm text-uppercase"
+                                        id="serviceFilterUsed" placeholder="Ej: PH3950">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body p-3">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold text-secondary">Costo Total (USD) *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-success text-white border-success">$</span>
+                                        <input type="number" step="0.01" class="form-control border-success fw-bold"
+                                            name="total_cost_usd" required placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold text-secondary">Método de Pago</label>
+                                    <select class="form-select" name="payment_method">
+                                        <option value="Efectivo USD">Efectivo USD</option>
+                                        <option value="Zelle">Zelle</option>
+                                        <option value="Pago Móvil / Bs">Pago Móvil / Bs</option>
+                                        <option value="Punto de Venta">Punto de Venta</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">Notas del Técnico</label>
+                                    <input type="text" class="form-control" name="notes_technician"
+                                        placeholder="Observaciones...">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success px-4 fw-bold"><i
+                                class="bi bi-save me-2"></i>Registrar y Actualizar Historial</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Agregar Vehículo Simplicado -->
 <div class="modal fade" id="addVehicleModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0">
-                <h6 class="modal-title fw-bold"><i class="bi bi-car-front me-2 text-primary"></i>Nuevo Vehículo — <span
-                        id="modalClientName"></span></h6>
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Nuevo Vehículo</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body px-4">
+            <div class="modal-body">
                 <form id="addVehicleForm">
-                    <input type="hidden" id="addVehicleClientId">
+                    <input type="hidden" id="addVehicleClientId" name="client_id">
                     <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold">Placa *</label>
-                            <input type="text" class="form-control form-control-sm font-monospace text-uppercase"
-                                name="plate" required placeholder="AA000BB">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold">Tipo</label>
+                        <div class="col-6"><label class="form-label small">Placa</label><input type="text"
+                                class="form-control form-control-sm text-uppercase" name="plate" required></div>
+                        <div class="col-6"><label class="form-label small">Tipo</label>
                             <select class="form-select form-select-sm" name="type">
-                                <option value="Carro">🚗 Carro</option>
-                                <option value="Camioneta">🚙 Camioneta</option>
-                                <option value="Moto">🏍 Moto</option>
-                                <option value="Pesado">🚛 Pesado</option>
+                                <option value="Carro">Carro</option>
+                                <option value="Camioneta">Camioneta</option>
+                                <option value="Moto">Moto</option>
+                                <option value="Pesado">Pesado</option>
                             </select>
                         </div>
-                        <div class="col-6"><label class="form-label small fw-semibold">Marca</label><input type="text"
-                                class="form-control form-control-sm" name="brand" placeholder="Toyota"></div>
-                        <div class="col-6"><label class="form-label small fw-semibold">Modelo</label><input type="text"
-                                class="form-control form-control-sm" name="model" placeholder="Corolla"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold">Año</label><input type="number"
-                                class="form-control form-control-sm" name="year" placeholder="2018"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold" title="Motor en litros">Motor
-                                (L)</label><input type="text" class="form-control form-control-sm" name="engine_v"
-                                placeholder="1.6"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold">Viscosidad</label><input
-                                type="text" class="form-control form-control-sm text-uppercase"
-                                name="recommended_viscosity" placeholder="15W40"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold" title="Litros de aceite">Cap.
-                                (L)</label><input type="number" step="0.5" class="form-control form-control-sm"
-                                name="oil_capacity_liters" placeholder="4.0"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold">Filtro</label><input type="text"
-                                class="form-control form-control-sm text-uppercase" name="filter_code"
-                                placeholder="PH6607"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold">KM Actual</label><input
-                                type="number" class="form-control form-control-sm" name="last_odometer"
-                                placeholder="85000"></div>
+                        <div class="col-4"><label class="form-label small">Marca</label><input type="text"
+                                class="form-control form-control-sm" name="brand"></div>
+                        <div class="col-4"><label class="form-label small">Modelo</label><input type="text"
+                                class="form-control form-control-sm" name="model"></div>
+                        <div class="col-4"><label class="form-label small">Año</label><input type="number"
+                                class="form-control form-control-sm" name="year"></div>
                     </div>
-                    <div class="d-grid mt-3">
-                        <button type="submit" class="btn btn-primary btn-sm">Guardar Vehículo</button>
-                    </div>
+                    <button class="btn btn-primary text-center mt-3 w-100" type="submit">Guardar</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
-
-<!-- ─── Modal: Editar Ficha Técnica / Registrar Servicio ───────── -->
-<div class="modal fade" id="editVehicleModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0">
-                <h6 class="modal-title fw-bold"><i class="bi bi-wrench me-2 text-warning"></i>Ficha Técnica — <span
-                        id="editVehiclePlate" class="font-monospace"></span></h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body px-4">
-                <form id="editVehicleForm">
-                    <input type="hidden" id="editVehicleId">
-                    <div class="row g-2">
-                        <div class="col-6"><label class="form-label small fw-semibold">Marca</label><input type="text"
-                                class="form-control form-control-sm" name="brand" id="ev_brand"></div>
-                        <div class="col-6"><label class="form-label small fw-semibold">Modelo</label><input type="text"
-                                class="form-control form-control-sm" name="model" id="ev_model"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold">Año</label><input type="number"
-                                class="form-control form-control-sm" name="year" id="ev_year"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold"
-                                title="Viscosidad recomendada por fabricante">Viscosidad</label><input type="text"
-                                class="form-control form-control-sm text-uppercase" name="recommended_viscosity"
-                                id="ev_viscosity"></div>
-                        <div class="col-4"><label class="form-label small fw-semibold"
-                                title="Litros que requiere el motor">Cap. (L)</label><input type="number" step="0.5"
-                                class="form-control form-control-sm" name="oil_capacity_liters" id="ev_capacity"></div>
-                        <div class="col-6"><label class="form-label small fw-semibold"
-                                title="Código del filtro de aceite">Filtro</label><input type="text"
-                                class="form-control form-control-sm text-uppercase" name="filter_code" id="ev_filter">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold"
-                                title="Kilómetros actuales — actualizar en cada servicio">🛣 KM Actual (Nuevo
-                                Servicio)</label>
-                            <input type="number" class="form-control form-control-sm fw-bold border-primary"
-                                name="last_odometer" id="ev_odometer">
-                        </div>
-                    </div>
-                    <div class="d-grid mt-3">
-                        <button type="submit" class="btn btn-warning btn-sm fw-semibold">
-                            <i class="bi bi-check2-circle me-1"></i> Guardar Ficha Técnica
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
-<!-- qrcode.js — genera QR en el browser, cero peso en el servidor -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+{% if clients_json %}
+<script type="application/json" id="clientsDataJson">
+{{ clients_json | safe }}
+</script>
+{% endif %}
+
 <script>
-    // ─── Toast ───────────────────────────────────────────────────────
-    function showToast(msg, type = 'success') {
-        const el = document.getElementById('crmToast');
-        el.className = `toast align-items-center text-white border-0 bg-${type}`;
-        document.getElementById('crmToastMsg').textContent = msg;
-        bootstrap.Toast.getOrCreateInstance(el, { delay: 3000 }).show();
+    // Variables globales
+    let currentClientId = null;
+    let allClientsGlobal = [];
+
+    try {
+        const jsonEl = document.getElementById("clientsDataJson");
+        if (jsonEl && jsonEl.textContent) {
+            allClientsGlobal = JSON.parse(jsonEl.textContent);
+            console.log("Clientes cargados OK:", allClientsGlobal.length);
+        }
+    } catch (e) {
+        console.error("Error parseando clientes:", e);
     }
 
-    // ─── Generar QR en canvas para cada vehículo ──────────────────────
-    document.querySelectorAll('[id^="qr-"]').forEach(el => {
-        const uuid = el.getAttribute('data-uuid');
-        const url = `${location.origin}/v/${uuid}`;
-        new QRCode(el, { text: url, width: 60, height: 60, correctLevel: QRCode.CorrectLevel.M });
-    });
+    // ─── LÓGICA DE INTERFAZ DUAL PANEL ─────────────────────────
+    function loadClientDetail(clientId) {
+        currentClientId = clientId;
+        // Marcar activo en lista
+        document.querySelectorAll('.client-item').forEach(el => el.classList.remove('active'));
+        const itemEl = document.getElementById('client-item-' + clientId);
+        if (itemEl) {
+            itemEl.classList.add('active');
+        }
 
-    // ─── Smart Search ─────────────────────────────────────────────────
-    let searchTimeout;
-    document.getElementById('crmSearch').addEventListener('input', function () {
-        clearTimeout(searchTimeout);
-        const q = this.value.trim();
-        if (!q) {
-            document.querySelectorAll('.client-card').forEach(c => c.style.display = '');
+        // Mostrar paneles
+        document.getElementById('emptyStateDetail').classList.add('d-none');
+        document.getElementById('detailContent').classList.remove('d-none');
+
+        // Obtener cliente
+        const client = allClientsGlobal.find(c => c.id === clientId);
+        if (!client) return;
+
+        // Poblar Cabecera
+        document.getElementById('detailAvatar').textContent = client.full_name[0].toUpperCase();
+        document.getElementById('detailName').textContent = client.full_name;
+        document.getElementById('detailSpent').textContent = '$' + Number(client.total_spent).toFixed(2);
+        document.getElementById('detailVehicleCount').textContent = client.vehicles.length;
+
+        let contactHtml = '';
+        if (client.phone) contactHtml += `<i class="bi bi-telephone me-1"></i>${client.phone}`;
+        if (client.address) contactHtml += ` <span class="mx-2">|</span> <i class="bi bi-geo-alt me-1"></i>${client.address}`;
+        document.getElementById('detailContact').innerHTML = contactHtml || 'Sin datos de contacto';
+
+        document.getElementById('btnWhatsapp').onclick = () => window.open(`https://wa.me/${client.phone}`);
+        document.getElementById('btnAddVehicleBtn').onclick = () => {
+            document.getElementById('addVehicleClientId').value = client.id;
+            new bootstrap.Modal(document.getElementById('addVehicleModal')).show();
+        };
+
+        // Poblar Vehículos
+        renderVehicles(client.vehicles, client.full_name);
+    }
+
+    function renderVehicles(vehicles, clientName) {
+        const container = document.getElementById('vehiclesContainer');
+        container.innerHTML = '';
+        if (vehicles.length === 0) {
+            container.innerHTML = `<div class="text-center text-muted py-5 border bg-white rounded-3 shadow-sm"><i
+        class="bi bi-car-front display-4 opacity-25 d-block mb-3"></i>
+    <h6>Sin vehículos agregados</h6>
+    <p class="small">Añade el primer vehículo para comenzar su historial técnico.</p>
+</div>`;
             return;
         }
-        searchTimeout = setTimeout(async () => {
-            const res = await fetch(`/api/crm/clients?q=${encodeURIComponent(q)}`, { credentials: 'include' });
-            if (!res.ok) return;
-            const data = await res.json();
-            const foundIds = new Set(data.map(c => c.id));
-            document.querySelectorAll('.client-card').forEach(card => {
-                const idMatch = foundIds.has(parseInt(card.querySelector('[data-bs-target]')?.getAttribute('data-bs-target')?.replace('#vehicles-', '')));
-                // Fallback: búsqueda local
-                const name = card.getAttribute('data-name') || '';
-                const phone = card.getAttribute('data-phone') || '';
-                const plates = card.getAttribute('data-plates') || '';
-                const ql = q.toLowerCase();
-                const localMatch = name.includes(ql) || phone.includes(ql) || plates.includes(ql.replace(/-/g, '').replace(/ /g, ''));
-                card.style.display = localMatch ? '' : 'none';
+
+        vehicles.forEach(v => {
+            const qrUrl = `${location.origin}/v/${v.qr}`;
+            const card = document.createElement('div');
+            card.className = 'vehicle-card';
+            card.innerHTML = `
+<div class="d-flex justify-content-between align-items-start">
+    <div class="d-flex gap-3">
+        <!-- QR Code container -->
+        <div id="detail-qr-${v.qr}" class="border rounded bg-white p-1" style="width:70px; height:70px;"></div>
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h5 class="fw-bold mb-0 font-monospace text-primary tracking-wide">${v.plate}</h5>
+                <span
+                    class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill"><i
+                        class="bi bi-award me-1"></i>${v.service_count} Serv.</span>
+            </div>
+            <h6 class="text-secondary mb-2">${v.brand} ${v.model} (${v.year})</h6>
+
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                ${v.engine_type ? `<span class="badge bg-light text-dark border"><i
+                        class="bi bi-gear-wide-connected me-1"></i>${v.engine_type}L</span>` : ''}
+                ${v.recommended_viscosity ? `<span class="badge bg-info bg-opacity-10 text-info border border-info"><i
+                        class="bi bi-droplet-fill me-1"></i>${v.recommended_viscosity} ${v.capacity ? `(${v.capacity}L)`
+                        : ''}</span>` : ''}
+                ${v.filter_oil ? `<span class="badge bg-light text-dark border"><i class="bi bi-funnel me-1"></i>F.
+                    Aceite: ${v.filter_oil}</span>` : ''}
+                ${v.filter_air ? `<span class="badge bg-light text-dark border"><i class="bi bi-wind me-1"></i>F. Aire:
+                    ${v.filter_air}</span>` : ''}
+                ${v.odometer ? `<span class="badge bg-warning bg-opacity-10 text-dark border border-warning"><i
+                        class="bi bi-speedometer2 me-1"></i>${Number(v.odometer).toLocaleString()} km</span>` : ''}
+            </div>
+        </div>
+    </div>
+    <div class="d-flex flex-column gap-2">
+        <button class="btn btn-primary btn-sm px-3 fw-bold shadow-sm" onclick="openAddService(${v.id}, '${v.plate}')"><i
+                class="bi bi-plus-lg me-1"></i> Registrar Servicio</button>
+        <a href="/v/${v.qr}" target="_blank" class="btn btn-outline-secondary btn-sm"><i
+                class="bi bi-box-arrow-up-right me-1"></i> Ficha Pública</a>
+        <button class="btn btn-outline-success btn-sm"
+            onclick="window.open('https://api.whatsapp.com/send?text=Ficha técnica de ${clientName}. Placa ${v.plate}: ${qrUrl}')"><i
+                class="bi bi-whatsapp me-1"></i> Compartir QR</button>
+    </div>
+</div>`;
+
+            let timelineHtml = '';
+            if (v.service_records && v.service_records.length > 0) {
+                const sortedRecords = [...v.service_records].sort((a, b) => new Date(b.date) - new Date(a.date));
+                let recordsHtml = '';
+                sortedRecords.forEach(sr => {
+                    recordsHtml += `
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="ps-4">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="mb-1 fw-bold text-dark">${sr.service_type} <span class="text-muted fw-normal fs-7 ms-2">${new Date(sr.date).toLocaleDateString()}</span></h6>
+                            <span class="fw-bold text-success">$${Number(sr.total_cost).toFixed(2)}</span>
+                        </div>
+                        <p class="mb-1 small text-secondary"><strong>Kilometraje:</strong> ${Number(sr.odometer).toLocaleString()} km | <strong>Pago:</strong> ${sr.payment_method}</p>
+                        ${sr.notes ? `<p class="mb-0 x-small text-muted bg-light p-2 rounded-2 mt-1 fst-italic"><i class="bi bi-info-circle me-1"></i>${sr.notes}</p>` : ''}
+                    </div>
+                </div>`;
+                });
+
+                timelineHtml = `
+            <div class="mt-4 pt-4 border-top">
+                <h6 class="fw-bold text-secondary mb-3 small text-uppercase letter-spacing-1"><i class="bi bi-clock-history me-1"></i> Historial de Servicios</h6>
+                ${recordsHtml}
+            </div>`;
+            } else {
+                timelineHtml = `
+            <div class="mt-4 pt-4 border-top text-center opacity-50">
+                <i class="bi bi-journal-x fs-3 d-block mb-1"></i>
+                <h6 class="small text-muted mb-0">Sin historial de servicios aún</h6>
+            </div>`;
+            }
+
+            card.innerHTML += timelineHtml;
+            container.appendChild(card);
+
+            // Render QR code
+            new QRCode(document.getElementById(`detail-qr-${v.qr}`), {
+                text: qrUrl,
+                width: 62,
+                height: 62,
+                correctLevel: QRCode.CorrectLevel.M
             });
-        }, 300);
-    });
-
-    // ─── Toggle campos vehículo en registro rápido ────────────────────
-    document.getElementById('addVehicleToggle').addEventListener('change', function () {
-        document.getElementById('vehicleFields').style.display = this.checked ? '' : 'none';
-    });
-
-    // ─── Abrir modal Agregar Vehículo a cliente existente ────────────
-    function openAddVehicle(clientId, clientName) {
-        document.getElementById('addVehicleClientId').value = clientId;
-        document.getElementById('modalClientName').textContent = clientName;
-        new bootstrap.Modal(document.getElementById('addVehicleModal')).show();
+        });
     }
 
-    // ─── Crear cliente (+ vehículo opcional) ─────────────────────────
+    // Smart Search local
+    document.getElementById('crmSearch').addEventListener('input', function (e) {
+        const term = e.target.value.toLowerCase().replace(/[- ]/g, '');
+        document.querySelectorAll('.client-item').forEach(item => {
+            const name = item.getAttribute('data-name');
+            const phone = item.getAttribute('data-phone');
+            const plates = item.getAttribute('data-plates').replace(/[- ]/g, '');
+            if (name.includes(term) || phone.includes(term) || plates.includes(term)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // ─── Lógica para Formularios ──────────────────────────────
+    document.getElementById('addVehicleToggle').addEventListener('change', function () {
+        document.getElementById('vehicleFields').style.display = this.checked ? 'block' : 'none';
+    });
+
+    // Envío Nuevo Cliente
     document.getElementById('addClientForm').addEventListener('submit', async e => {
         e.preventDefault();
         const fd = new FormData(e.target);
@@ -505,23 +742,25 @@
         const body = {
             full_name: fd.get('full_name'),
             phone: fd.get('phone') || null,
-            address: fd.get('address') || null,
+            email: fd.get('email') || null,
+            address_reference: fd.get('address_reference') || null,
             vehicle: (addVehicle && plate) ? {
                 plate: plate,
-                type: fd.get('v_type'),
+                type: fd.get('v_type') || 'Carro',
                 brand: fd.get('v_brand') || null,
                 model: fd.get('v_model') || null,
                 year: parseInt(fd.get('v_year')) || null,
-                engine_v: fd.get('v_engine') || null,
-                recommended_viscosity: fd.get('v_viscosity') || null,
-                oil_capacity_liters: parseFloat(fd.get('v_capacity')) || null,
-                filter_code: fd.get('v_filter') || null,
-                last_odometer: parseInt(fd.get('v_odometer')) || null
+                engine_type: fd.get('v_engine_type') || null,
+                recommended_viscosity: fd.get('v_recommended_viscosity') || null,
+                oil_capacity_qts: parseFloat(fd.get('v_oil_capacity_qts')) || null,
+                filter_model_oil: fd.get('v_filter_model_oil') || null,
+                filter_model_air: fd.get('v_filter_model_air') || null,
+                current_odometer: parseInt(fd.get('v_current_odometer')) || null
             } : null
         };
 
         const btn = e.target.querySelector('[type=submit]');
-        btn.disabled = true; btn.textContent = 'Guardando…';
+        btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
         try {
             const res = await fetch('/api/crm/clients', {
                 method: 'POST', credentials: 'include',
@@ -529,119 +768,80 @@
                 body: JSON.stringify(body)
             });
             if (res.ok) {
-                showToast('Cliente registrado exitosamente', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('addClientModal')).hide();
-                setTimeout(() => location.reload(), 1200);
+                location.reload();
             } else {
                 const err = await res.json();
-                showToast('Error: ' + (err.detail || 'No se pudo guardar'), 'danger');
+                alert('Error: ' + err.detail);
             }
-        } catch { showToast('Error de conexión', 'danger'); }
-        finally { btn.disabled = false; btn.textContent = 'Guardar Cliente'; }
+        } catch (err) { alert('Error de conexión'); }
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Guardar Cliente y Expediente';
     });
 
-    // ─── Agregar vehículo a cliente existente ────────────────────────
-    document.getElementById('addVehicleForm').addEventListener('submit', async e => {
+    // Add Service Trigger
+    function openAddService(vehicleId, plate) {
+        document.getElementById('serviceVehicleId').value = vehicleId;
+        document.getElementById('serviceModalPlate').textContent = plate.toUpperCase();
+        new bootstrap.Modal(document.getElementById('addServiceModal')).show();
+    }
+
+    // Submit Service Registry
+    document.getElementById('addServiceForm').addEventListener('submit', async e => {
         e.preventDefault();
         const fd = new FormData(e.target);
-        const clientId = document.getElementById('addVehicleClientId').value;
+        const vid = fd.get('vehicle_id');
+
+        const oilUsed = document.getElementById('serviceOilUsed').value;
+        const filterUsed = document.getElementById('serviceFilterUsed').value;
+        const productsJson = { aceite: oilUsed, filtro_aceite: filterUsed };
+
         const body = {
-            plate: fd.get('plate'),
-            type: fd.get('type'),
-            brand: fd.get('brand') || null,
-            model: fd.get('model') || null,
-            year: parseInt(fd.get('year')) || null,
-            engine_v: fd.get('engine_v') || null,
-            recommended_viscosity: fd.get('recommended_viscosity') || null,
-            oil_capacity_liters: parseFloat(fd.get('oil_capacity_liters')) || null,
-            filter_code: fd.get('filter_code') || null,
-            last_odometer: parseInt(fd.get('last_odometer')) || null
+            odometer_at_service: parseInt(fd.get('odometer_at_service')),
+            service_type: fd.get('service_type'),
+            products_json: JSON.stringify(productsJson),
+            total_cost_usd: parseFloat(fd.get('total_cost_usd')),
+            payment_method: fd.get('payment_method'),
+            notes_technician: fd.get('notes_technician') || null
         };
+
         const btn = e.target.querySelector('[type=submit]');
-        btn.disabled = true; btn.textContent = 'Guardando…';
+        btn.disabled = true;
         try {
-            const res = await fetch(`/api/crm/clients/${clientId}/vehicles`, {
+            const res = await fetch(`/api/crm/vehicles/${vid}/services`, {
                 method: 'POST', credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
             if (res.ok) {
-                showToast('Vehículo registrado', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('addVehicleModal')).hide();
-                setTimeout(() => location.reload(), 1200);
+                location.reload();
             } else {
                 const err = await res.json();
-                showToast('Error: ' + (err.detail || 'No se pudo guardar'), 'danger');
+                alert('Error: ' + err.detail);
             }
-        } catch { showToast('Error de conexión', 'danger'); }
-        finally { btn.disabled = false; btn.textContent = 'Guardar Vehículo'; }
+        } catch (err) { alert('Error de red'); }
+        btn.disabled = false;
     });
 
-    // ─── Abrir modal editar ficha ─────────────────────────────────────
-    function openEditVehicle(id, plate, brand, model, year, viscosity, capacity, filter, odometer) {
-        document.getElementById('editVehicleId').value = id;
-        document.getElementById('editVehiclePlate').textContent = plate;
-        document.getElementById('ev_brand').value = brand || '';
-        document.getElementById('ev_model').value = model || '';
-        document.getElementById('ev_year').value = year || '';
-        document.getElementById('ev_viscosity').value = viscosity || '';
-        document.getElementById('ev_capacity').value = capacity || '';
-        document.getElementById('ev_filter').value = filter || '';
-        document.getElementById('ev_odometer').value = odometer || '';
-        new bootstrap.Modal(document.getElementById('editVehicleModal')).show();
-    }
-
-    // ─── Guardar ficha técnica (PUT) ─────────────────────────────────
-    document.getElementById('editVehicleForm').addEventListener('submit', async e => {
+    // Add Vehicle Simple Mod
+    document.getElementById('addVehicleForm').addEventListener('submit', async e => {
         e.preventDefault();
-        const id = document.getElementById('editVehicleId').value;
+        const cid = document.getElementById('addVehicleClientId').value;
         const fd = new FormData(e.target);
         const body = {
+            plate: fd.get('plate'),
+            type: fd.get('type') || 'Carro',
             brand: fd.get('brand') || null,
             model: fd.get('model') || null,
-            year: parseInt(fd.get('year')) || null,
-            recommended_viscosity: fd.get('recommended_viscosity') || null,
-            oil_capacity_liters: parseFloat(fd.get('oil_capacity_liters')) || null,
-            filter_code: fd.get('filter_code') || null,
-            last_odometer: parseInt(fd.get('last_odometer')) || null,
-            last_service_date: new Date().toISOString()
+            year: parseInt(fd.get('year')) || null
         };
-        const btn = e.target.querySelector('[type=submit]');
-        btn.disabled = true; btn.textContent = 'Guardando…';
         try {
-            const res = await fetch(`/api/crm/vehicles/${id}`, {
-                method: 'PUT', credentials: 'include',
+            const res = await fetch(`/api/crm/clients/${cid}/vehicles`, {
+                method: 'POST', credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            if (res.ok) {
-                showToast('Ficha técnica actualizada', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('editVehicleModal')).hide();
-                setTimeout(() => location.reload(), 1200);
-            } else {
-                const err = await res.json();
-                showToast('Error: ' + (err.detail || ''), 'danger');
-            }
-        } catch { showToast('Error de conexión', 'danger'); }
-        finally { btn.disabled = false; btn.textContent = 'Guardar Ficha Técnica'; }
+            if (res.ok) location.reload();
+            else alert('Error: no se pudo guardar el vehículo');
+        } catch (err) { alert('Error de conexión'); }
     });
-
-    // ─── Eliminar vehículo (solo admin) ──────────────────────────────
-    async function deleteVehicle(id, plate) {
-        if (!confirm(`¿Eliminar vehículo ${plate}? Esta acción es irreversible.`)) return;
-        const res = await fetch(`/api/crm/vehicles/${id}`, { method: 'DELETE', credentials: 'include' });
-        if (res.ok) { showToast(`Vehículo ${plate} eliminado`, 'success'); setTimeout(() => location.reload(), 1200); }
-        else showToast('Error al eliminar', 'danger');
-    }
-
-    // ─── Compartir por WhatsApp ───────────────────────────────────────
-    function shareWhatsApp(clientName, vehicleDesc, uuid, phone) {
-        const link = `${location.origin}/v/${uuid}`;
-        const msg = `Hola ${clientName}, te escribimos de *LubMovil* 🛢\n` +
-            `La ficha técnica de tu *${vehicleDesc.trim()}* ya está activa.\n` +
-            `Puedes verla aquí: ${link}`;
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-        window.open(url, '_blank');
-    }
 </script>
 {% endblock %}

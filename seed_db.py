@@ -120,42 +120,42 @@ from datetime import datetime, timedelta
 
 crm_data = [
     {
-        "client": dict(full_name="Juan Carlos Méndez", phone="584141234567", address="El Cafetal"),
+        "client": dict(full_name="Juan Carlos Méndez", phone="584141234567", address_reference="El Cafetal"),
         "vehicles": [
             dict(plate="AB123CD", qr_uuid="A1B2C3D4", type=VehicleType.CARRO,
-                 brand="Toyota", model="Corolla", year=2018, engine_v="1.6",
-                 recommended_viscosity="5W30", oil_capacity_liters=4.0, filter_code="PH6607",
-                 last_odometer=85000, last_service_date=datetime.utcnow() - timedelta(days=70),
+                 brand="Toyota", model="Corolla", year=2018, engine_type="1.6",
+                 recommended_viscosity="5W30", oil_capacity_qts=4.0, filter_model_oil="PH6607",
+                 current_odometer=85000, last_service_date=datetime.now() - timedelta(days=70),
                  status=VehicleStatus.ACTIVO),
         ]
     },
     {
-        "client": dict(full_name="María González Torres", phone="584121234567", address="Las Mercedes"),
+        "client": dict(full_name="María González Torres", phone="584121234567", address_reference="Las Mercedes"),
         "vehicles": [
             dict(plate="XY456EF", qr_uuid="X4Y5Z6W7", type=VehicleType.CAMIONETA,
-                 brand="Ford", model="Explorer", year=2020, engine_v="3.5",
-                 recommended_viscosity="5W20", oil_capacity_liters=5.7, filter_code="FL910S",
-                 last_odometer=32000, last_service_date=datetime.utcnow() - timedelta(days=30),
+                 brand="Ford", model="Explorer", year=2020, engine_type="3.5",
+                 recommended_viscosity="5W20", oil_capacity_qts=5.7, filter_model_oil="FL910S",
+                 current_odometer=32000, last_service_date=datetime.now() - timedelta(days=30),
                  status=VehicleStatus.ACTIVO),
             dict(plate="MN789GH", qr_uuid="M7N8O9P0", type=VehicleType.MOTO,
-                 brand="Honda", model="CB190R", year=2022, engine_v="0.19",
-                 recommended_viscosity="10W40", oil_capacity_liters=1.0, filter_code="HF204",
-                 last_odometer=12000, last_service_date=datetime.utcnow() - timedelta(days=10),
+                 brand="Honda", model="CB190R", year=2022, engine_type="0.19",
+                 recommended_viscosity="10W40", oil_capacity_qts=1.0, filter_model_oil="HF204",
+                 current_odometer=12000, last_service_date=datetime.now() - timedelta(days=10),
                  status=VehicleStatus.ACTIVO),
         ]
     },
     {
-        "client": dict(full_name="Pedro Ramírez Silva", phone="584161234567", address="Sabana Grande"),
+        "client": dict(full_name="Pedro Ramírez Silva", phone="584161234567", address_reference="Sabana Grande"),
         "vehicles": [
             dict(plate="DF321IJ", qr_uuid="D3E4F5G6", type=VehicleType.PESADO,
-                 brand="Mercedes-Benz", model="Sprinter", year=2015, engine_v="2.2",
-                 recommended_viscosity="15W40", oil_capacity_liters=8.0, filter_code="W940/25",
-                 last_odometer=210000, last_service_date=datetime.utcnow() - timedelta(days=120),
+                 brand="Mercedes-Benz", model="Sprinter", year=2015, engine_type="2.2",
+                 recommended_viscosity="15W40", oil_capacity_qts=8.0, filter_model_oil="W940/25",
+                 current_odometer=210000, last_service_date=datetime.now() - timedelta(days=120),
                  status=VehicleStatus.ACTIVO),
             dict(plate="GH654KL", qr_uuid="G6H7I8J9", type=VehicleType.CARRO,
-                 brand="Kia", model="Picanto", year=2019, engine_v="1.2",
-                 recommended_viscosity="5W30", oil_capacity_liters=3.0, filter_code="C-225",
-                 last_odometer=55000, last_service_date=datetime.utcnow() - timedelta(days=45),
+                 brand="Kia", model="Picanto", year=2019, engine_type="1.2",
+                 recommended_viscosity="5W30", oil_capacity_qts=3.0, filter_model_oil="C-225",
+                 current_odometer=55000, last_service_date=datetime.now() - timedelta(days=45),
                  status=VehicleStatus.ACTIVO),
         ]
     },
