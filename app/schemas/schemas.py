@@ -114,7 +114,7 @@ class TokenPayload(BaseModel):
 
 # ─── CRM ELITE ────────────────────────────────────────────────────────────────
 
-from app.models.models import VehicleType, VehicleStatus
+from app.models.models import VehicleType, VehicleStatus, OrderStatus
 
 # --- Service Record Schemas ---
 class ServiceRecordBase(BaseModel):
@@ -202,4 +202,36 @@ class ClientResponse(ClientBase):
     created_at: Optional[datetime] = None
     vehicles: List[VehicleResponse] = []
 
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Service Order Schemas (MÓDULO 4: EL CEREBRO) ---
+class ServiceOrderBase(BaseModel):
+    vehicle_id: int
+    user_id: int
+    status: OrderStatus = OrderStatus.PRESUPUESTO
+    total_amount_usd: float = 0.0
+    notes: Optional[str] = None
+    products_json: Optional[str] = None
+    payment_method: Optional[str] = None
+    odometer_at_service: int
+    next_service_odometer: Optional[int] = None
+    next_service_date: Optional[datetime] = None
+
+class ServiceOrderCreate(ServiceOrderBase):
+    pass
+
+class ServiceOrderUpdate(BaseModel):
+    status: Optional[OrderStatus] = None
+    total_amount_usd: Optional[float] = None
+    notes: Optional[str] = None
+    products_json: Optional[str] = None
+    payment_method: Optional[str] = None
+    odometer_at_service: Optional[int] = None
+    next_service_odometer: Optional[int] = None
+    next_service_date: Optional[datetime] = None
+
+class ServiceOrderResponse(ServiceOrderBase):
+    id: int
+    date: datetime
+    
     model_config = ConfigDict(from_attributes=True)

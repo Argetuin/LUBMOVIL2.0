@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = "lubmovil.db"
 if os.path.exists(DB_PATH):
     os.remove(DB_PATH)
-    print(f"✓ Base de datos anterior eliminada.")
+    print("Base de datos anterior eliminada.")
 
 from app.db.session import engine, Base, SessionLocal
 from app.models.models import User, UserRole, Product, ProductCategory, AuditLog, SystemSettings
@@ -20,7 +20,7 @@ from app.core.security import get_password_hash
 
 # Crear todas las tablas con el nuevo schema
 Base.metadata.create_all(bind=engine)
-print("✓ Tablas creadas con el nuevo schema.")
+print("Tablas creadas con el nuevo schema.")
 
 db = SessionLocal()
 
@@ -36,7 +36,7 @@ users = [
 for u in users:
     db.add(u)
 db.commit()
-print(f"✓ {len(users)} usuarios creados.")
+print(f"{len(users)} usuarios creados.")
 
 # ─── PRODUCTOS DE PRUEBA ─────────────────────────────────────
 products_data = [
@@ -106,16 +106,16 @@ for pd in products_data:
     created += 1
 
 db.commit()
-print(f"✓ {created} productos de prueba creados.")
+print(f"{created} productos de prueba creados.")
 
 # ─── CONFIGURACIÓN DE SISTEMA ─────────────────────────────────
 settings = SystemSettings(bcv_rate=433.17)
 db.add(settings)
 db.commit()
-print(f"✓ Configuración del sistema inicializada (Tasa BCV: 433.17).")
+print("Configuracion del sistema inicializada (Tasa BCV: 433.17).")
 
 # ─── CLIENTES Y VEHÍCULOS DE PRUEBA (CRM) ─────────────────────
-from app.models.models import Client, Vehicle, VehicleType, VehicleStatus
+from app.models.models import Client, Vehicle, VehicleType, VehicleStatus, ServiceOrder, OrderStatus, Treasury, CashFlowType
 from datetime import datetime, timedelta
 
 crm_data = [
@@ -170,8 +170,68 @@ for entry in crm_data:
         db.add(v)
 
 db.commit()
-print(f"✓ 3 clientes y 5 vehículos de prueba creados con QR.")
+db.commit()
+print("3 clientes y 5 vehiculos de prueba creados con QR.")
+
+# ─── ÓRDENES DE SERVICIO DE PRUEBA (EL CEREBRO) ─────────────────────
+from app.models.models import ServiceRecord
+import json
+
+# Crear una orden completada para el primer vehiculo (AB123CD)
+first_vehicle = db.query(Vehicle).filter_by(plate="AB123CD").first()
+admin_user = db.query(User).filter_by(username="admin").first()
+
+if first_vehicle and admin_user:
+    # 1. Crear la Orden
+    order = ServiceOrder(
+        order_number="LM-240312-TEST",
+        vehicle_id=first_vehicle.id,
+        user_id=admin_user.id,
+        status=OrderStatus.COMPLETADA,
+        total_amount_usd=55.00,
+        total_amount_bs=55.00 * 433.17,
+        bcv_rate_at_time=433.17,
+        notes="Servicio de prueba completado exitosamente",
+        products_json=json.dumps({"aceite": "15W40 Mineral", "filtro_aceite": "PH6607"}),
+        payment_method="Efectivo USD",
+        odometer_at_service=80000,
+        next_service_odometer=85000,
+        next_service_date=datetime.now() + timedelta(days=90),
+        is_drained=True,
+        is_filter_new=True,
+        is_plug_tight=True,
+        is_cleaned=True
+    )
+    db.add(order)
+    db.flush()
+
+    # 1.5 Crear el registro en Tesorería
+    treasury = Treasury(
+        amount_usd=55.00,
+        amount_bs=55.00 * 433.17,
+        rate=433.17,
+        description=f"Pago de Servicio Orden LM-240312-TEST - Placa {first_vehicle.plate}",
+        entry_type=CashFlowType.INGRESO,
+        payment_method="Efectivo USD",
+        reference_order_id=order.id
+    )
+    db.add(treasury)
+    
+    # 2. Crear el Record histórico
+    record = ServiceRecord(
+        vehicle_id=first_vehicle.id,
+        date=datetime.now() - timedelta(days=1),
+        odometer_at_service=80000,
+        service_type="Mantenimiento Preventivo Completo",
+        products_json=json.dumps({"aceite": "15W40 Mineral (4L)", "filtro_aceite": "PH6607"}),
+        total_cost_usd=55.00,
+        payment_method="Efectivo USD",
+        notes_technician="Filtro de aire soplado. Todo OK."
+    )
+    db.add(record)
+    db.commit()
+    print("Orden de servicio de prueba creada exitosamente.")
 
 db.close()
-print("\n✅ Base de datos lista. Inicia el servidor con:")
+print("\nBase de datos lista. Inicia el servidor con:")
 print("   python -m uvicorn app.main:app --reload")

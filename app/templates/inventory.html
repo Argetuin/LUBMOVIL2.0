@@ -179,26 +179,21 @@
                     </td>
                     <td>
                         <span class="badge bg-light text-muted border p-category" style="font-size:0.65rem;"
-                            data-value="{{ product.category.value }}">{{
-                            product.category.value }}</span>
+                            data-value="{{ product.category.value }}">{{ product.category.value }}</span>
                     </td>
                     {% if user.role.value == 'admin' %}
-                    <td class="text-end font-monospace text-muted" style="font-size:0.82rem;">${{
-                        "%.2f"|format(product.average_unit_cost) }}</td>
+                    <td class="text-end font-monospace text-muted" style="font-size:0.82rem;">${{ "%.2f"|format(product.average_unit_cost) }}</td>
                     <td class="text-end font-monospace fw-semibold text-success" style="font-size:0.82rem;">
                         ${{ "%.2f"|format(product.retail_price_usd - product.average_unit_cost) }}
                     </td>
                     {% endif %}
-                    <td class="text-end font-monospace fw-bold text-primary" style="font-size:0.85rem;">${{
-                        "%.2f"|format(product.retail_price_usd) }}</td>
+                    <td class="text-end font-monospace fw-bold text-primary" style="font-size:0.85rem;">${{ "%.2f"|format(product.retail_price_usd) }}</td>
                     {%- set bs_bcv = product.retail_price_usd * paralelo_rate / bcv_rate if bcv_rate > 0 else 0 -%}
                     <td class="text-end font-monospace fw-semibold" style="font-size:0.82rem; color: #7c3aed;"
                         title="Bs si paga a tasa BCV: PVP ${{ '%.2f'|format(product.retail_price_usd) }} × {{ '%.2f'|format(paralelo_rate) }} ÷ {{ '%.2f'|format(bcv_rate) }}">
                         Bs {{ "%.2f"|format(bs_bcv) }}</td>
-                    <td class="text-end font-monospace text-dark" style="font-size:0.82rem;">${{
-                        "%.2f"|format(product.wholesale_price_usd) }}</td>
-                    <td class="text-end font-monospace text-dark" style="font-size:0.82rem;">${{
-                        "%.2f"|format(product.distributor_price_usd) }}</td>
+                    <td class="text-end font-monospace text-dark" style="font-size:0.82rem;">${{ "%.2f"|format(product.wholesale_price_usd) }}</td>
+                    <td class="text-end font-monospace text-dark" style="font-size:0.82rem;">${{ "%.2f"|format(product.distributor_price_usd) }}</td>
                     <td class="text-center">
                         <span
                             class="badge rounded-1 {% if product.current_stock > product.min_stock %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning-emphasis{% endif %} fw-semibold"

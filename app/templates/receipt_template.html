@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}Recibo de Servicio #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<style>
+    .receipt-card {
+        max-width: 600px;
+        margin: 2rem auto;
+        border: none;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        border-radius: 1.5rem;
+        overflow: hidden;
+    }
+
+    .receipt-header {
+        background: #1e293b;
+        color: white;
+        padding: 2.5rem 2rem;
+        text-align: center;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .evidence-img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .signature-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .signature-img {
+        max-width: 200px;
+        max-height: 80px;
+        filter: contrast(150%);
+    }
+
+    .item-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.95rem;
+    }
+
+    .item-row:last-child {
+        border-bottom: none;
+    }
+
+    .total-section {
+        background: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 1rem;
+    }
+
+    @media print {
+        .no-print {
+            display: none;
+        }
+
+        .receipt-card {
+            box-shadow: none;
+            margin: 0;
+            max-width: 100%;
+        }
+
+        body {
+            background: white;
+        }
+    }
+</style>
+
+<div class="container pb-5">
+    <div class="receipt-card card">
+        <div class="receipt-header">
+            <div class="mb-3">
+                <span class="status-badge">Servicio Completado</span>
+            </div>
+            <h2 class="fw-bold mb-1">LUBMOVIL</h2>
+            <p class="text-light opacity-50 mb-0">Comprobante Digital de Operación</p>
+            <div class="mt-4 pt-4 border-top border-secondary border-opacity-25">
+                <h6 class="text-uppercase small letter-spacing-2 opacity-50">Orden de Servicio</h6>
+                <h4 class="font-monospace fw-bold mb-0 text-info">{{ order.order_number }}</h4>
+            </div>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+            <!-- Datos del Cliente / Vehículo -->
+            <div class="row g-4 mb-5">
+                <div class="col-6">
+                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Vehículo</label>
+                    <h5 class="fw-bold mb-0">{{ order.vehicle.plate }}</h5>
+                    <p class="text-muted small mb-0">{{ order.vehicle.brand }} {{ order.vehicle.model }}</p>
+                </div>
+                <div class="col-6 text-end">
+                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Fecha</label>
+                    <h5 class="fw-bold mb-0">{{ order.date.strftime('%d/%m/%Y') }}</h5>
+                    <p class="text-muted small mb-0">{{ order.date.strftime('%H:%M %p') }}</p>
+                </div>
+                <div class="col-6">
+                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Odómetro</label>
+                    <h5 class="fw-bold mb-0">{{ order.odometer_at_service }} <small class="text-muted">km</small></h5>
+                </div>
+                <div class="col-6 text-end">
+                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Instalador</label>
+                    <h5 class="fw-bold mb-0">{{ order.user.full_name }}</h5>
+                </div>
+            </div>
+
+            <!-- Desglose de Productos -->
+            <h6 class="fw-bold border-bottom pb-2 mb-3">Detalle del Servicio</h6>
+            <div class="mb-4">
+                {% if order.products_json %}
+                {% set products = order.products_json | from_json %}
+                {% for key, name in products.items() %}
+                <div class="item-row">
+                    <span class="text-muted">{{ key | capitalize }}</span>
+                    <span class="fw-bold">{{ name }}</span>
+                </div>
+                {% endfor %}
+                {% endif %}
+                <div class="item-row">
+                    <span class="text-muted">Mano de Obra</span>
+                    <span class="fw-bold">${{ "%.2f"|format(order.labor_fee) }}</span>
+                </div>
+                <div class="item-row">
+                    <span class="text-muted">Cargo Logístico</span>
+                    <span class="fw-bold">${{ "%.2f"|format(order.logistics_fee) }}</span>
+                </div>
+            </div>
+
+            <!-- Totales -->
+            <div class="total-section mb-5">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted">Total en Divisas</span>
+                    <h3 class="fw-bold text-success mb-0">${{ "%.2f"|format(order.total_amount_usd) }}</h3>
+                </div>
+                {% if order.bcv_rate_at_time %}
+                <div class="d-flex justify-content-between align-items-center small text-muted">
+                    <span>Tasa BCV (Bs/$)</span>
+                    <span>{{ "%.2f"|format(order.bcv_rate_at_time) }}</span>
+                </div>
+                <div
+                    class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary border-opacity-10">
+                    <span class="fw-bold text-dark">Total en Bolívares</span>
+                    <span class="fw-bold text-dark">Bs. {{ "{:,.2f}".format(order.total_amount_bs) }}</span>
+                </div>
+                {% endif %}
+                <div class="mt-3 text-center">
+                    <span class="badge bg-white text-primary border px-3 py-2 shadow-sm">
+                        <i class="bi bi-wallet2 me-2"></i>Pago vía: {{ order.payment_method }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Evidencias -->
+            <h6 class="fw-bold border-bottom pb-2 mb-3">Evidencia de Calidad</h6>
+            <div class="row g-2 mb-5">
+                <div class="col-4">
+                    <img src="{{ order.photo_odometer_url or '/static/img/no-photo.png' }}" class="evidence-img"
+                        alt="Odómetro">
+                    <p class="text-center small text-muted mt-1">Odómetro</p>
+                </div>
+                <div class="col-4">
+                    <img src="{{ order.photo_engine_before_url or '/static/img/no-photo.png' }}" class="evidence-img"
+                        alt="Antes">
+                    <p class="text-center small text-muted mt-1">Antes</p>
+                </div>
+                <div class="col-4">
+                    <img src="{{ order.photo_engine_after_url or '/static/img/no-photo.png' }}" class="evidence-img"
+                        alt="Después">
+                    <p class="text-center small text-muted mt-1">Después</p>
+                </div>
+            </div>
+
+            <!-- Firma -->
+            <div class="signature-box">
+                <p class="text-muted small mb-2">Firma del Cliente (Conformidad)</p>
+                {% if order.signature_data %}
+                <img src="{{ order.signature_data }}" class="signature-img" alt="Firma">
+                {% else %}
+                <div class="py-3 text-muted opacity-50"><i>Sin firma registrada</i></div>
+                {% endif %}
+            </div>
+
+            <div class="text-center mt-5 no-print">
+                <div class="d-grid gap-3">
+                    <button class="btn btn-primary btn-lg rounded-pill shadow" onclick="window.print()">
+                        <i class="bi bi-printer me-2"></i>Imprimir Recibo
+                    </button>
+                    <a href="https://wa.me/{{ order.vehicle.client.phone }}?text={{ ('¡Hola! Te envío el recibo de tu servicio en LubMovil. Orden #' ~ order.order_number)|urlencode }}"
+                        class="btn btn-outline-success btn-lg rounded-pill">
+                        <i class="bi bi-whatsapp me-2"></i>Enviar al Cliente
+                    </a>
+                    <a href="/cerebro" class="btn btn-link text-muted">Volver al Cerebro</a>
+                </div>
+            </div>
+
+            <p class="text-center text-muted small mt-5 mb-0">
+                LUBMOVIL — Servicios Automotrices de Grado Pro<br>
+                <span class="opacity-50">Gracias por confiar en nosotros.</span>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

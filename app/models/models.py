@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Text, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -8,6 +8,16 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     VENTAS = "ventas"
     INSTALADOR = "instalador"
+
+class OrderStatus(str, enum.Enum):
+    PRESUPUESTO = "Presupuesto"
+    EN_EJECUCION = "En Ejecución"
+    COMPLETADA = "Completada"
+    CANCELADA = "Cancelada"
+
+class CashFlowType(str, enum.Enum):
+    INGRESO = "Ingreso"
+    EGRESO = "Egreso"
 
 class User(Base):
     __tablename__ = "users"
@@ -159,6 +169,7 @@ class Vehicle(Base):
 
     client = relationship("Client", back_populates="vehicles")
     service_records = relationship("ServiceRecord", back_populates="vehicle", cascade="all, delete-orphan", order_by="desc(ServiceRecord.date)")
+    orders = relationship("ServiceOrder", back_populates="vehicle", cascade="all, delete-orphan", order_by="desc(ServiceOrder.date)")
 
 
 class ServiceRecord(Base):
@@ -182,3 +193,60 @@ class ServiceRecord(Base):
     is_loyalty_applied = Column(Boolean, default=False)
 
     vehicle = relationship("Vehicle", back_populates="service_records")
+
+class ServiceOrder(Base):
+    __tablename__ = "service_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_number = Column(String, unique=True, index=True) # Ej: LM-0001
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(DateTime, default=datetime.utcnow)
+    status = Column(SQLEnum(OrderStatus), default=OrderStatus.PRESUPUESTO)
+    
+    # Finanzas Detalladas
+    oil_cost_at_time = Column(Float, default=0.0)
+    filter_cost_at_time = Column(Float, default=0.0)
+    labor_fee = Column(Float, default=15.0)
+    logistics_fee = Column(Float, default=1.5)
+    total_amount_usd = Column(Float, default=0.0)
+    bcv_rate_at_time = Column(Float, default=0.0)
+    total_amount_bs = Column(Float, default=0.0)
+    
+    # Datos de Campo / Checklist
+    odometer_at_service = Column(Integer, nullable=False)
+    is_drained = Column(Boolean, default=False)
+    is_filter_new = Column(Boolean, default=False)
+    is_plug_tight = Column(Boolean, default=False)
+    is_cleaned = Column(Boolean, default=False)
+    
+    # Evidencias
+    photo_odometer_url = Column(String, nullable=True)
+    photo_engine_before_url = Column(String, nullable=True)
+    photo_engine_after_url = Column(String, nullable=True)
+    signature_data = Column(Text, nullable=True) # Firma digital en Base64
+    
+    notes = Column(Text, nullable=True)
+    products_json = Column(Text, nullable=True) # Resumen de lo usado
+    payment_method = Column(String, nullable=True)
+    
+    next_service_odometer = Column(Integer, nullable=True)
+    next_service_date = Column(DateTime, nullable=True)
+    
+    vehicle = relationship("Vehicle", back_populates="orders")
+    user = relationship("User")
+
+class Treasury(Base):
+    __tablename__ = "treasury"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime, default=datetime.utcnow)
+    amount_usd = Column(Float, default=0.0)
+    amount_bs = Column(Float, default=0.0)
+    rate = Column(Float, default=0.0)
+    description = Column(String)
+    entry_type = Column(SQLEnum(CashFlowType), default=CashFlowType.INGRESO)
+    payment_method = Column(String)
+    reference_order_id = Column(Integer, ForeignKey("service_orders.id"), nullable=True)
+    
+    order = relationship("ServiceOrder")

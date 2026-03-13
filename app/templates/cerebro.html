@@ -1,0 +1,558 @@
+﻿{% extends "base.html" %}
+{% block title %}El Cerebro — Operaciones de Campo{% endblock %}
+
+{% block content %}
+<style>
+    .wizard-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .stepper {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+
+    .stepper::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #e2e8f0;
+        z-index: 0;
+    }
+
+    .step {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        flex: 1;
+    }
+
+    .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #cbd5e1;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.5rem;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+
+    .step.active .step-number {
+        border-color: #2563eb;
+        background: #2563eb;
+        color: white;
+    }
+
+    .step.completed .step-number {
+        border-color: #10b981;
+        background: #10b981;
+        color: white;
+    }
+
+    .step-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+    }
+
+    .step.active .step-title {
+        color: #2563eb;
+    }
+
+    .step.completed .step-title {
+        color: #10b981;
+    }
+
+    .step-panel {
+        display: none;
+    }
+
+    .step-panel.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .live-quote {
+        background: #f8fafc;
+        color: #1e293b;
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .quote-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        color: #475569;
+    }
+
+    .quote-total {
+        border-top: 2px solid #e2e8f0;
+        margin-top: 1rem;
+        padding-top: 1rem;
+    }
+
+    .search-input-container {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    #vehicleSearch {
+        padding-left: 3rem;
+        font-size: 1.2rem;
+        height: 4rem;
+        border-radius: 2rem;
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s;
+    }
+
+    #vehicleSearch:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        outline: none;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1.2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.5rem;
+        color: #64748b;
+    }
+
+    .results-list {
+        max-height: 400px;
+        overflow-y: auto;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        background: white;
+    }
+
+    .vehicle-match {
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .vehicle-match:last-child {
+        border-bottom: none;
+    }
+
+    .vehicle-match:hover {
+        background: #f8fafc;
+    }
+
+    .vehicle-match.selected {
+        background: #eff6ff;
+        border-left: 4px solid #2563eb;
+    }
+
+    .vehicle-match .plate-badge {
+        background: #1e293b;
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: 0.4rem;
+        font-family: monospace;
+        font-weight: bold;
+    }
+
+    #signatureCanvas {
+        border: 2px dashed #cbd5e1;
+        border-radius: 0.5rem;
+        width: 100%;
+        height: 200px;
+        background: #f8fafc;
+    }
+
+    .photo-upload {
+        border: 2px dashed #cbd5e1;
+        border-radius: 0.5rem;
+        padding: 2rem 1rem;
+        text-align: center;
+        background: #f8fafc;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .photo-preview {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-size: cover;
+        background-position: center;
+        display: none;
+    }
+</style>
+
+<div class="container py-4 wizard-container" x-data="cerebroData()">
+    <div class="d-flex align-items-center mb-4">
+        <div class="bg-primary text-white rounded p-2 me-3 shadow-sm"><i class="bi bi-briefcase fs-3"></i></div>
+        <div>
+            <h3 class="fw-bold mb-0">Operaciones de Campo</h3>
+            <p class="text-muted mb-0">Despacho de Servicios y Ventas</p>
+        </div>
+    </div>
+
+    <div id="loadingOverlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; justify-content:center; align-items:center;">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+        <h4 class="mt-3 fw-bold">Procesando...</h4>
+    </div>
+
+    <div class="stepper">
+        <div class="step" :class="{'active': step === 1, 'completed': step > 1}">
+            <div class="step-number" x-text="step > 1 ? '✓' : '1'"></div>
+            <div class="step-title">Buscar</div>
+        </div>
+        <div class="step" :class="{'active': step === 2, 'completed': step > 2}">
+            <div class="step-number" x-text="step > 2 ? '✓' : '2'"></div>
+            <div class="step-title">Cotizar</div>
+        </div>
+        <div class="step" :class="{'active': step === 3, 'completed': step > 3}">
+            <div class="step-number" x-text="step > 3 ? '✓' : '3'"></div>
+            <div class="step-title">Técnico</div>
+        </div>
+        <div class="step" :class="{'active': step === 4, 'completed': step > 4}">
+            <div class="step-number" x-text="step > 4 ? '✓' : '4'"></div>
+            <div class="step-title">Cierre</div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4 p-md-5">
+            <div class="step-panel" :class="{'active': step === 1}">
+                <h4 class="fw-bold text-center mb-4">Identificar Cliente o Vehículo</h4>
+                <div class="search-input-container">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" id="vehicleSearch" class="form-control"
+                        placeholder="Busca por Nombre, Placa o Vehículo..." x-model="searchQuery"
+                        @input="filterVehicles()" autocomplete="off">
+                </div>
+                <div x-show="filteredVehicles.length > 0" class="results-list shadow-sm">
+                    <template x-for="v in filteredVehicles" :key="v.vehicle_id">
+                        <div class="vehicle-match p-3 d-flex align-items-center justify-content-between"
+                            :class="{'selected': selectedVehicle && selectedVehicle.vehicle_id === v.vehicle_id}"
+                            @click="selectVehicle(v)">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3"><span class="plate-badge" x-text="v.plate"></span></div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark" x-text="v.client_name"></h6>
+                                    <p class="mb-0 small text-muted"
+                                        x-text="v.brand + ' ' + v.model + ' (' + v.year + ')'"></p>
+                                </div>
+                            </div>
+                            <div class="text-end"
+                                x-show="selectedVehicle && selectedVehicle.vehicle_id === v.vehicle_id"><i
+                                    class="bi bi-check-circle-fill text-primary fs-4"></i></div>
+                        </div>
+                    </template>
+                </div>
+                <div x-show="searchQuery.length >= 2 && filteredVehicles.length === 0"
+                    class="text-center py-5 text-muted"><i class="bi bi-emoji-frown fs-1"></i>
+                    <p class="mt-2">No encontramos coincidencias para esa búsqueda.</p>
+                </div>
+                <div class="text-end mt-4"><button class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm"
+                        :disabled="!selectedVehicle" @click="step = 2">Continuar <i
+                            class="bi bi-arrow-right"></i></button></div>
+            </div>
+
+            <div class="step-panel" :class="{'active': step === 2}">
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <h5 class="fw-bold mb-3">Configuración del Servicio</h5>
+                        <label class="form-label fw-bold text-muted small uppercase">Aceite Principal</label>
+                        <select class="form-select mb-3" x-model="selectedOilId" @change="fetchQuote()">
+                            <option value="">Seleccione el aceite...</option>
+                            <template x-for="o in oils" :key="o.id">
+                                <option :value="o.id" x-text="o.name + ' ($' + o.price_usd + ')'"></option>
+                            </template>
+                        </select>
+                        <label class="form-label fw-bold text-muted small uppercase">Filtro (Opcional)</label>
+                        <select class="form-select" x-model="selectedFilterId" @change="fetchQuote()">
+                            <option value="">Ninguno / Provisto por cliente</option>
+                            <template x-for="f in filters" :key="f.id">
+                                <option :value="f.id" x-text="f.name + ' ($' + f.price_usd + ')'"></option>
+                            </template>
+                        </select>
+                        <div x-show="quoteError" class="alert alert-danger mt-3" x-text="quoteError"></div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="live-quote h-100 d-flex flex-column">
+                            <h6 class="fw-bold text-muted text-uppercase mb-3 small">Presupuesto en Vivo</h6>
+                            <div class="flex-grow-1">
+                                <template x-if="quoteData">
+                                    <div>
+                                        <div class="quote-item"><span
+                                                x-text="quoteData.breakdown.oil.qty + ' Qts x ' + quoteData.breakdown.oil.name"></span><span
+                                                class="fw-bold" x-text="'$' + quoteData.breakdown.oil.subtotal"></span>
+                                        </div>
+                                        <template x-if="quoteData.breakdown.filter">
+                                            <div class="quote-item"><span
+                                                    x-text="'1 x ' + quoteData.breakdown.filter.name"></span><span
+                                                    class="fw-bold"
+                                                    x-text="'$' + quoteData.breakdown.filter.unit_price"></span></div>
+                                        </template>
+                                        <div class="quote-item"><span>Mano de Obra / Gastos Op.</span><span
+                                                class="fw-bold" x-text="'$' + quoteData.breakdown.labor_fee"></span>
+                                        </div>
+                                        <div class="quote-item"><span>Cargo Logístico / Delivery</span><span
+                                                class="fw-bold" x-text="'$' + quoteData.breakdown.logistics_fee"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="quote-total mt-auto">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0 fw-bold">Total USD</h5>
+                                    <h2 class="text-success fw-bold mb-0"
+                                        x-text="quoteData ? '$' + quoteData.total_usd : '$0.00'"></h2>
+                                </div>
+                                <div class="bg-white p-2 rounded-3 border mt-2 small d-flex justify-content-between">
+                                    <span class="text-muted">Bs:</span><span class="fw-bold text-primary"
+                                        x-text="quoteData ? (quoteData.total_usd * {{ paralelo_rate }}).toLocaleString('es-VE', {minimumFractionDigits: 2}) : '0,00'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-4"><button class="btn btn-light"
+                        @click="step = 1">Atrás</button><button class="btn btn-primary" :disabled="!quoteData"
+                        @click="step = 3">Continuar</button></div>
+            </div>
+
+            <div class="step-panel" :class="{'active': step === 3}">
+                <h4 class="fw-bold text-center mb-4">Ejecución Técnica</h4>
+                <div class="card mb-4 bg-light border-0">
+                    <div class="card-body"><label class="form-label fw-bold">Kilometraje Actual (Odómetro)
+                            *</label><input type="number"
+                            class="form-control form-control-lg text-center font-monospace" x-model="actualOdometer">
+                    </div>
+                </div>
+                <h6 class="fw-bold mb-3">Checklist LUBMOVIL</h6>
+                <div class="list-group mb-4">
+                    <label class="list-group-item d-flex gap-3 p-3"><input class="form-check-input flex-shrink-0"
+                            type="checkbox" x-model="checklist.drained"
+                            style="width: 1.5rem; height: 1.5rem;"><span><strong>Drenaje Completo:</strong> Aceite viejo
+                            extraído.</span></label>
+                    <template x-if="selectedFilterId">
+                        <label class="list-group-item d-flex gap-3 p-3"><input class="form-check-input flex-shrink-0"
+                                type="checkbox" x-model="checklist.filter"
+                                style="width: 1.5rem; height: 1.5rem;"><span><strong>Instalación de Filtro:</strong>
+                                Torque recomendado.</span></label>
+                    </template>
+                    <label class="list-group-item d-flex gap-3 p-3"><input class="form-check-input flex-shrink-0"
+                            type="checkbox" x-model="checklist.plug"
+                            style="width: 1.5rem; height: 1.5rem;"><span><strong>Tapón Asegurado:</strong> Sin
+                            fugas.</span></label>
+                    <label class="list-group-item d-flex gap-3 p-3"><input class="form-check-input flex-shrink-0"
+                            type="checkbox" x-model="checklist.cleaned"
+                            style="width: 1.5rem; height: 1.5rem;"><span><strong>Limpieza Final:</strong> Área
+                            impecable.</span></label>
+                </div>
+                <div class="d-flex justify-content-between"><button class="btn btn-light"
+                        @click="step = 2">Atrás</button><button class="btn btn-primary"
+                        :disabled="!isChecklistComplete()" @click="step = 4">Evidencias</button></div>
+            </div>
+
+            <div class="step-panel" :class="{'active': step === 4}">
+                <h4 class="fw-bold text-center mb-4">Registro y Conformidad</h4>
+                <div class="row g-3 mb-4">
+                    <div class="col-4">
+                        <div class="photo-upload" onclick="document.getElementById('ph1').click()"><i
+                                class="bi bi-speedometer fs-2 text-muted"></i><input type="file" id="ph1" class="d-none"
+                                capture="environment" @change="previewImage($event, 'pv1', 'photo_odometer')">
+                            <div class="photo-preview" id="pv1"></div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="photo-upload" onclick="document.getElementById('ph2').click()"><i
+                                class="bi bi-camera fs-2 text-muted"></i><input type="file" id="ph2" class="d-none"
+                                capture="environment" @change="previewImage($event, 'pv2', 'photo_before')">
+                            <div class="photo-preview" id="pv2"></div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="photo-upload" onclick="document.getElementById('ph3').click()"><i
+                                class="bi bi-check2-circle fs-2 text-warning"></i><input type="file" id="ph3"
+                                class="d-none" capture="environment"
+                                @change="previewImage($event, 'pv3', 'photo_after')">
+                            <div class="photo-preview" id="pv3"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-light p-3 rounded mb-4 d-flex justify-content-between align-items-center">
+                    <div><label class="form-label fw-bold mb-1">Método de Pago</label><select class="form-select"
+                            x-model="paymentMethod">
+                            <option value="">Seleccione...</option>
+                            <option value="Efectivo USD">Efectivo USD</option>
+                            <option value="Pago Móvil / Bs">Pago Móvil / Bs</option>
+                            <option value="Zelle">Zelle</option>
+                        </select></div>
+                    <div class="text-end">
+                        <div class="small text-muted">A cobrar</div>
+                        <h3 class="fw-bold text-success mb-0" x-text="quoteData ? '$' + quoteData.total_usd : '$0'">
+                        </h3>
+                    </div>
+                </div>
+                <div class="mb-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between mb-2"><strong>Firma</strong><button
+                            class="btn btn-link btn-sm p-0" @click="clearSignature()">Reiniciar</button></div><canvas
+                        id="signatureCanvas" style="border: 2px dashed #cbd5e1; border-radius: 1rem;"></canvas>
+                </div>
+                <button class="btn btn-success btn-lg w-100 fw-bold shadow" :disabled="!paymentMethod || isSubmitting"
+                    @click="executeAtomicCheckout()"><span x-show="!isSubmitting">PROCESAR SERVICIO</span><span
+                        x-show="isSubmitting" class="spinner-border spinner-border-sm"></span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered text-center">
+        <div class="modal-content p-4 rounded-5 border-0 shadow-lg">
+            <div class="modal-body py-5"><i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                <h2 class="fw-bold mt-3">¡Completado!</h2>
+                <p class="text-muted">El servicio ha sido registrado exitosamente.</p>
+                <div class="d-grid gap-2 mt-4"><button class="btn btn-primary btn-lg" onclick="location.reload()">Nuevo
+                        Servicio</button><a id="whatsappLink" href="#" target="_blank"
+                        class="btn btn-outline-success">Enviar WhatsApp</a></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<script>
+    const GLOBAL_VEHICLES = {{ vehicles_json | safe }};
+    const GLOBAL_PRODUCTS = {{ products_json | safe }};
+    const BCV_RATE = {{ bcv_rate }};
+    let signaturePad = null;
+    document.addEventListener("DOMContentLoaded", () => {
+        const canvas = document.getElementById('signatureCanvas');
+        if (canvas) {
+            signaturePad = new SignaturePad(canvas, { backgroundColor: '#f8fafc' });
+            const resize = () => {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+            };
+            window.addEventListener("resize", resize);
+            resize();
+        }
+    });
+
+    function cerebroData() {
+        return {
+            step: 1, isSubmitting: false, searchQuery: '', filteredVehicles: [], selectedVehicle: null,
+            vehicles: GLOBAL_VEHICLES, oils: GLOBAL_PRODUCTS.oils, filters: GLOBAL_PRODUCTS.filters,
+            selectedOilId: '', selectedFilterId: '', quoteData: null, quoteError: '',
+            bcvRate: BCV_RATE, paraleloRate: {{ paralelo_rate }},
+            actualOdometer: '', checklist: { drained: false, filter: false, plug: false, cleaned: false },
+            paymentMethod: '', b64Photos: { photo_odometer: null, photo_before: null, photo_after: null },
+            filterVehicles() {
+                if (this.searchQuery.length < 2) { this.filteredVehicles = []; return; }
+                const q = this.searchQuery.toLowerCase().trim();
+                this.filteredVehicles = this.vehicles.filter(v =>
+                    v.plate.toLowerCase().includes(q) ||
+                    v.client_name.toLowerCase().includes(q) ||
+                    v.brand.toLowerCase().includes(q) ||
+                    v.model.toLowerCase().includes(q)
+                );
+            },
+            selectVehicle(v) { this.selectedVehicle = v; },
+            isChecklistComplete() {
+                if (!this.actualOdometer) return false;
+                if (!this.checklist.drained || !this.checklist.plug || !this.checklist.cleaned) return false;
+                if (this.selectedFilterId && !this.checklist.filter) return false;
+                return true;
+            },
+            async fetchQuote() {
+                if (!this.selectedVehicle || !this.selectedOilId) { this.quoteData = null; return; }
+                try {
+                    let url = `/api/brain/quote?vehicle_id=${this.selectedVehicle.vehicle_id}&oil_product_id=${this.selectedOilId}`;
+                    if (this.selectedFilterId) url += `&filter_product_id=${this.selectedFilterId}`;
+                    const res = await fetch(url);
+                    const dat = await res.json();
+                    if (!res.ok) { this.quoteError = dat.detail; this.quoteData = null; return; }
+                    this.quoteData = dat;
+                    this.quoteError = '';
+                } catch (e) { this.quoteError = "Error de conexión."; }
+            },
+            previewImage(ev, prevId, varName) {
+                const file = ev.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        document.getElementById(prevId).style.backgroundImage = `url(${e.target.result})`;
+                        document.getElementById(prevId).style.display = 'block';
+                        this.b64Photos[varName] = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            },
+            clearSignature() { if (signaturePad) signaturePad.clear(); },
+            async executeAtomicCheckout() {
+                if (signaturePad.isEmpty()) { alert("Firma requerida."); return; }
+                this.isSubmitting = true;
+                document.getElementById('loadingOverlay').style.display = 'flex';
+                const payload = {
+                    vehicle_id: this.selectedVehicle.vehicle_id,
+                    odometer_at_service: parseInt(this.actualOdometer),
+                    items: { oil_id: this.selectedOilId, oil_qty: this.quoteData.breakdown.oil.qty, filter_id: this.selectedFilterId || null },
+                    total_usd: this.quoteData.total_usd,
+                    payment_method: this.paymentMethod,
+                    checklist: this.checklist,
+                    photo_odometer: this.b64Photos.photo_odometer, photo_before: this.b64Photos.photo_before, photo_after: this.b64Photos.photo_after,
+                    signature_data: signaturePad.toDataURL()
+                };
+                try {
+                    const res = await fetch('/api/brain/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const dat = await res.json();
+                    if (res.ok) {
+                        const receiptUrl = `${window.location.origin}/cerebro/receipt/${dat.order.id}`;
+                        const msg = `LUBMOVIL - Comprobante:
+${receiptUrl}`;
+                        document.getElementById('whatsappLink').href = `https://wa.me/${this.selectedVehicle.client_phone || ''}?text=${encodeURIComponent(msg)}`;
+                        new bootstrap.Modal(document.getElementById('successModal')).show();
+                    } else { alert("ERROR: " + dat.detail); }
+                } catch (e) { alert("Error crítico."); }
+                this.isSubmitting = false;
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        };
+    }
+</script>
+{% endblock %}

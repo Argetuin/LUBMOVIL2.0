@@ -169,8 +169,7 @@
                         <span>📅</span>
                         <div>
                             <div style="font-size:0.65rem;color:#94a3b8;">Último servicio</div>
-                            <div class="fw-bold" style="font-size:0.85rem;">{{ vehicle.last_service_date.strftime('%d de
-                                %B de %Y') }}</div>
+                            <div class="fw-bold" style="font-size:0.85rem;">{{ vehicle.last_service_date.strftime('%d de %B de %Y') }}</div>
                         </div>
                     </div>
                 </div>
@@ -219,8 +218,7 @@
                 <i class="bi bi-whatsapp me-2"></i>Contactar a LubMovil
             </a>
             <div class="mt-3" style="font-size:0.65rem;color:#64748b;">
-                <i class="bi bi-qr-code me-1"></i>Escaneado {{ vehicle.qr_scan_count }} {{ 'vez' if
-                vehicle.qr_scan_count == 1 else 'veces' }}
+                <i class="bi bi-qr-code me-1"></i>Escaneado {{ vehicle.qr_scan_count }} {{ 'vez' if vehicle.qr_scan_count == 1 else 'veces' }}
             </div>
         </div>
 

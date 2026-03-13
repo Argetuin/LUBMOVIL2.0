@@ -1,126 +1,471 @@
 {% extends "base.html" %}
 
-{% block title %}Panel de Control{% endblock %}
+{% block title %}Panel de Control - LubMovil{% endblock %}
 
 {% block content %}
-<!-- Header Sección -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex align-items-center justify-content-between">
-            <div>
-                <h2 class="fw-bold mb-0">Dashboard Operativo</h2>
-                <p class="text-muted small mb-0">LUBMOVIL v2.0 - Gestión en Tiempo Real</p>
-            </div>
-            <div class="text-end">
-                <span class="badge bg-white text-dark border shadow-sm p-2 rounded-3">
-                    <i class="bi bi-person-badge text-primary me-2"></i>{{ user.role.value | capitalize }}
-                </span>
+<style>
+    :root {
+        --neon-green: #10b981;
+        --neon-blue: #3b82f6;
+        --dark-bg: #1e293b;
+        --darker-bg: #0f172a;
+        --glass-bg: rgba(30, 41, 59, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+        background-color: var(--darker-bg);
+        color: #f8fafc;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--glass-border);
+        border-radius: 1.25rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .stat-card {
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card i {
+        position: absolute;
+        right: -10px;
+        bottom: -10px;
+        font-size: 5rem;
+        opacity: 0.1;
+        transform: rotate(-15deg);
+    }
+
+    .neon-text-green {
+        color: var(--neon-green);
+        text-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    }
+
+    .neon-text-blue {
+        color: var(--neon-blue);
+        text-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    }
+
+    .search-select-container {
+        position: relative;
+    }
+
+    .search-select-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        background: var(--dark-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 0.75rem;
+        max-height: 250px;
+        overflow-y: auto;
+        margin-top: 0.5rem;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    .search-option {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        transition: background 0.2s;
+    }
+
+    .search-option:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .bcv-box {
+        background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+        border-radius: 1rem;
+        padding: 1rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .calc-input-group {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: border-color 0.3s;
+    }
+
+    .calc-input-group:focus-within {
+        border-color: var(--neon-green);
+        background: rgba(0, 0, 0, 0.4);
+    }
+
+    .calc-input {
+        background: transparent;
+        border: none;
+        color: white;
+        width: 100%;
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-align: right;
+    }
+
+    .calc-input:focus {
+        outline: none;
+    }
+
+    .calc-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #FFFFFF;
+        /* High contrast white */
+        font-weight: 700;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .text-muted-visible {
+        color: #cbd5e1 !important;
+        /* Lighter than standard muted */
+    }
+
+    .table-dark-custom {
+        --bs-table-bg: transparent;
+        --bs-table-color: #cbd5e1;
+        font-size: 0.875rem;
+    }
+
+    .table-dark-custom thead th {
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--glass-border);
+        color: #cbd5e1;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+    }
+</style>
+
+<div class="container-fluid py-4" x-data="dashboardData()">
+    <div class="row mb-5 align-items-center animate-fade-in">
+        <div class="col-md-8">
+            <h1 class="fw-black mb-0 tracking-tight">DASHBOARD <span
+                    class="text-muted-visible fw-light">OPERATIVO</span></h1>
+            <p class="text-muted-visible small">Bienvenido, <span class="fw-bold text-white">{{ user.full_name }}</span>. Control total de LubMovil.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div
+                class="d-inline-flex align-items-center bg-dark bg-opacity-50 p-2 rounded-4 border border-secondary border-opacity-25 shadow-sm">
+                <i class="bi bi-calendar3 me-2 text-primary"></i>
+                <span class="small fw-bold">{{ now }}</span>
             </div>
         </div>
     </div>
-</div>
 
-<div class="row g-4">
-    <!-- Panel de Tasas Estilo BCV -->
-    <div class="col-12 col-lg-7">
-        <div class="card glass border-0 shadow-lg h-100 overflow-hidden">
-            <div class="card-header bg-white bg-opacity-50 border-0 pt-4 pb-0 text-center">
-                <div class="mb-2">
-                    <img src="https://www.bcv.org.ve/sites/default/files/logo_bcv.png" alt="BCV"
-                        style="height: 60px; filter: grayscale(1) brightness(0.5);">
+    <div class="row g-4">
+        <div class="col-12 col-xl-8">
+            <div class="row g-3 mb-4 animate-fade-in" style="animation-delay: 0.1s">
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-card h-100">
+                        <span class="calc-label">Ventas Hoy</span>
+                        <h2 class="fw-bold mb-0 text-white">{{ stats.orders_today }}</h2>
+                        <i class="bi bi-cart-check"></i>
+                    </div>
                 </div>
-                <h5 class="fw-bold text-uppercase tracking-wider mb-1" style="color: #1e3a8a;">Tipo de Cambio de
-                    Referencia</h5>
-                <p class="text-muted x-small mb-3">Promedio ponderado resultante de las operaciones diarias</p>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-card h-100">
+                        <span class="calc-label">Ingresos USD</span>
+                        <h2 class="fw-bold mb-0 neon-text-green">${{ stats.revenue_today }}</h2>
+                        <i class="bi bi-currency-dollar"></i>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-card h-100">
+                        <span class="calc-label">Servicios Activos</span>
+                        <h2 class="fw-bold mb-0 neon-text-blue">{{ stats.active_services }}</h2>
+                        <i class="bi bi-gear-wide-connected"></i>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-card h-100">
+                        <span class="calc-label text-warning">Stock Bajo</span>
+                        <h2 class="fw-bold mb-0 text-warning">{{ stats.low_stock_count }}</h2>
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                </div>
             </div>
-            <div class="card-body px-4 pb-4">
+
+            <div class="glass-card p-4 mb-4 animate-fade-in" style="animation-delay: 0.2s">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Ventas Recientes</h5>
+                    <a href="/reports"
+                        class="btn btn-dark btn-sm rounded-pill px-3 border border-secondary border-opacity-25">Ver
+                        Todos</a>
+                </div>
                 <div class="table-responsive">
-                    <table class="table table-borderless align-middle mb-0">
-                        <tbody style="font-size: 1.1rem;">
-                            <!-- Euro -->
-                            <tr class="border-bottom border-light">
-                                <td class="py-3 text-center" style="width: 60px;"><i
-                                        class="bi bi-currency-euro fs-4 text-dark"></i></td>
-                                <td class="py-3 fw-semibold text-primary">Bs / EUR</td>
-                                <td class="py-3 text-end font-monospace fw-bold" style="font-size: 1.4rem;">{{
-                                    "%.2f"|format(rates.eur_oficial) if rates.eur_oficial else "0.00" }}</td>
+                    <table class="table table-dark-custom align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Orden</th>
+                                <th>Cliente / Vehículo</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
                             </tr>
-                            <!-- Dólar Oficial -->
-                            <tr class="border-bottom border-light">
-                                <td class="py-3 text-center"><i class="bi bi-currency-dollar fs-4 text-dark"></i></td>
-                                <td class="py-3 fw-semibold text-primary">Bs / USD (BCV)</td>
-                                <td class="py-3 text-end font-monospace fw-bold" style="font-size: 1.4rem;">{{
-                                    "%.2f"|format(rates.usd_oficial) if rates.usd_oficial else "0.00" }}</td>
-                            </tr>
-                            <!-- Dólar Paralelo (Binance) -->
-                            <tr class="bg-primary bg-opacity-5 rounded-3">
-                                <td class="py-3 text-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                        fill="#F3BA2F" style="margin-top: -4px;">
-                                        <path
-                                            d="M16.624 13.9202l2.7175 2.7154-7.353 7.353-7.353-7.352 2.7113-2.7113 4.6417 4.6437 4.6355-4.6488zm4.6499-4.6355l2.7154 2.7175-2.7133 2.7133-2.7133-2.7133 2.7112-2.7175zm-18.5634 0l2.7175 2.7175-2.7133 2.7134-2.7134-2.7134 2.7092-2.7175zm9.2954-9.2847l7.352 7.352-2.7113 2.7113-4.6417-4.6437-4.6355 4.6488-2.7175-2.7154 7.354-7.353z" />
-                                    </svg>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_sales %}
+                            <tr>
+                                <td><span class="badge bg-dark border border-secondary border-opacity-50 text-light">{{ order.order_number }}</span></td>
+                                <td>
+                                    {% if order.vehicle and order.vehicle.client %}
+                                    <div class="fw-bold text-white">{{ order.vehicle.client.full_name }}</div>
+                                    <div class="x-small text-white-50">{{ order.vehicle.brand }} {{ order.vehicle.model }} ({{ order.vehicle.plate }})</div>
+                                    {% else %}
+                                    <div class="fw-bold text-white">Consumidor Final / Especial</div>
+                                    <div class="x-small text-white-50">Datos no disponibles</div>
+                                    {% endif %}
                                 </td>
-                                <td class="py-3 fw-semibold text-primary">Bs / USD (Paralelo / Binance)</td>
-                                <td class="py-3 text-end font-monospace fw-bold text-primary"
-                                    style="font-size: 1.4rem;">
-                                    {{ "%.2f"|format(rates.usd_paralelo) if rates.usd_paralelo else "0.00" }}</td>
+                                <td>
+                                    <div class="fw-bold text-success">${{ "%.2f"|format(order.total_amount_usd) }}</div>
+                                    <div class="x-small text-white-50">{{ "%.2f"|format(order.total_amount_bs) }} Bs
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if order.status == 'Completada' %}
+                                    <span
+                                        class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Completada</span>
+                                    {% elif order.status == 'En Ejecución' %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3">En
+                                        Proceso</span>
+                                    {% else %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3">{{ order.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-dark btn-sm rounded-circle"><i
+                                            class="bi bi-eye"></i></button>
+                                </td>
                             </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-white-50">No hay ventas registradas hoy.
+                                </td>
+                            </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                <div class="text-center mt-4">
-                    <span class="badge bg-light text-muted fw-normal p-2 rounded-pill">
-                        <i class="bi bi-clock-history me-1"></i> Fecha Valor: {{ now }}
-                    </span>
+            </div>
+
+            <div class="row g-3 animate-fade-in" style="animation-delay: 0.3s">
+                <div class="col-md-6">
+                    <a href="/cerebro" class="text-decoration-none">
+                        <div
+                            class="glass-card p-4 h-100 bg-primary bg-opacity-10 border-primary border-opacity-25 hover-translate-y">
+                            <i class="bi bi-cpu-fill fs-1 text-primary mb-3 d-block"></i>
+                            <h4 class="fw-bold text-white">El Cerebro</h4>
+                            <p class="text-white-50 mb-0 small">Asistente táctico para nuevos servicios de campo.</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <a href="/inventory" class="text-decoration-none">
+                        <div class="glass-card p-4 h-100 bg-dark bg-opacity-20 hover-translate-y">
+                            <i class="bi bi-box-seam fs-1 text-secondary mb-3 d-block"></i>
+                            <h4 class="fw-bold text-white">Stock Rápido</h4>
+                            <p class="text-white-50 mb-0 small">Verificar existencias y precios del catálogo completo.
+                            </p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <div class="d-flex flex-column gap-4 sticky-top" style="top: 2rem; z-index: 10">
+                <div class="glass-card p-4 shadow-xl border-success border-opacity-20 animate-fade-in"
+                    style="animation-delay: 0.4s">
+                    <h6 class="fw-bold mb-3 text-uppercase tracking-wider small text-white">Dólar BCV Hoy</h6>
+                    <div class="bcv-box">
+                        <div class="small text-white opacity-75">Tasa Oficial</div>
+                        <div class="display-6 fw-black text-white">Bs. <span
+                                x-text="rates.usd_oficial.toFixed(2)"></span></div>
+                    </div>
+                    <div class="d-flex flex-column gap-3 mb-4">
+                        <div class="calc-input-group">
+                            <label class="calc-label text-white-50">Dólares (USD)</label>
+                            <div class="d-flex align-items-center">
+                                <span class="fs-4 fw-bold text-primary me-2">$</span>
+                                <input type="number" class="calc-input" x-model.number="calc.usd" @input="updateBs()">
+                            </div>
+                        </div>
+                        <div class="calc-input-group">
+                            <label class="calc-label text-white-50">Bolívares (VES)</label>
+                            <div class="d-flex align-items-center">
+                                <span class="fs-4 fw-bold text-success me-2">Bs</span>
+                                <input type="number" class="calc-input" x-model.number="calc.bs" @input="updateUsd()">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-success w-100 rounded-pill fw-bold shadow-sm" @click="shareRate()"><i
+                            class="bi bi-whatsapp me-2"></i> Compartir Tasa</button>
+                </div>
+
+                <div class="glass-card p-4 shadow-xl animate-fade-in" style="animation-delay: 0.5s">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h6 class="fw-bold mb-0 text-uppercase tracking-wider small text-white">Express Price</h6>
+                        <span
+                            class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3">Real-Time</span>
+                    </div>
+                    <div class="mb-3 search-select-container" x-data="{ open: false, search: '' }">
+                        <label class="calc-label">Aceite</label>
+                        <div class="calc-input-group p-2 d-flex align-items-center" @click="open = !open">
+                            <span class="text-white-50 small me-2"><i class="bi bi-search"></i></span>
+                            <input type="text" class="calc-input fs-6 text-start" placeholder="Buscar aceite..."
+                                x-model="search" @input="open = true">
+                        </div>
+                        <div class="search-select-dropdown" x-show="open" @click.away="open = false" x-cloak>
+                            <template
+                                x-for="o in products.oils.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))"
+                                :key="o.id">
+                                <div class="search-option d-flex justify-content-between align-items-center"
+                                    @click="quoteReq.oilId = o.id; quoteReq.oilPrice = o.price_usd; search = o.name; open = false; updateQuote()">
+                                    <span x-text="o.name" class="small fw-bold text-white"></span>
+                                    <span class="text-success small fw-bold" x-text="'$' + o.price_usd"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="mb-3 search-select-container" x-data="{ open: false, search: '' }">
+                        <label class="calc-label">Filtro</label>
+                        <div class="calc-input-group p-2 d-flex align-items-center" @click="open = !open">
+                            <span class="text-white-50 small me-2"><i class="bi bi-search"></i></span>
+                            <input type="text" class="calc-input fs-6 text-start" placeholder="Buscar filtro..."
+                                x-model="search" @input="open = true">
+                        </div>
+                        <div class="search-select-dropdown" x-show="open" @click.away="open = false" x-cloak>
+                            <div class="search-option text-white-50 italic small"
+                                @click="quoteReq.filterId = ''; quoteReq.filterPrice = 0; search = 'Sin filtro'; open = false; updateQuote()">
+                                Sin filtro</div>
+                            <template
+                                x-for="f in products.filters.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))"
+                                :key="f.id">
+                                <div class="search-option d-flex justify-content-between align-items-center"
+                                    @click="quoteReq.filterId = f.id; quoteReq.filterPrice = f.price_usd; search = f.name; open = false; updateQuote()">
+                                    <span x-text="f.name" class="small fw-bold text-white"></span>
+                                    <span class="text-success small fw-bold" x-text="'$' + f.price_usd"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-4">
+                        <div class="col-12 text-center">
+                            <label class="calc-label">Cantidad Aceite (Qts)</label>
+                            <div
+                                class="d-flex justify-content-center align-items-center gap-3 bg-dark bg-opacity-30 p-2 rounded-pill border border-white border-opacity-20">
+                                <button class="btn btn-sm btn-dark rounded-circle border-0"
+                                    @click="if(quoteReq.oilQty > 0) quoteReq.oilQty--; updateQuote()"><i
+                                        class="bi bi-dash"></i></button>
+                                <span class="fs-4 fw-bold text-white" x-text="quoteReq.oilQty"></span>
+                                <button class="btn btn-sm btn-dark rounded-circle border-0"
+                                    @click="quoteReq.oilQty++; updateQuote()"><i class="bi bi-plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-column gap-2 mb-4">
+                        <div
+                            class="form-check form-switch p-2 d-flex justify-content-between align-items-center bg-dark bg-opacity-20 rounded-3 border border-white border-opacity-10">
+                            <label class="text-white fw-bold small" for="lToggle">Incluir Mano de Obra ($15)</label>
+                            <input class="form-check-input" type="checkbox" id="lToggle" x-model="quoteReq.includeLabor"
+                                @change="updateQuote()">
+                        </div>
+                        <div
+                            class="form-check form-switch p-2 d-flex justify-content-between align-items-center bg-dark bg-opacity-20 rounded-3 border border-white border-opacity-10">
+                            <label class="text-white fw-bold small" for="gToggle">Incluir Logística ($1.50)</label>
+                            <input class="form-check-input" type="checkbox" id="gToggle"
+                                x-model="quoteReq.includeLogistics" @change="updateQuote()">
+                        </div>
+                    </div>
+                    <div
+                        class="glass-card p-4 bg-dark bg-opacity-60 border-primary border-opacity-40 text-center shadow-inner">
+                        <div class="calc-label text-center mb-1 text-white">TOTAL ESTIMADO</div>
+                        <h1 class="fw-black neon-text-green mb-0" x-text="'$' + quoteRes.total_usd.toFixed(2)"></h1>
+                        <div class="fw-bold text-white-50" x-text="quoteRes.total_bs.toFixed(2) + ' Bs'"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Panel de Acciones Rápidas -->
-    <div class="col-12 col-lg-5">
-        <div class="h-100 d-flex flex-column gap-3">
-
-            <a href="/inventory" class="text-decoration-none flex-fill">
-                <div class="card border-0 shadow-sm h-100 d-flex flex-row align-items-stretch overflow-hidden"
-                    style="border-radius:.75rem;">
-                    <div style="width:6px;background:#2563eb;flex-shrink:0;"></div>
-                    <div class="d-flex align-items-center gap-3 p-4 flex-grow-1 bg-white">
-                        <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                            style="width:52px;height:52px;background:#eff6ff;">
-                            <i class="bi bi-box-seam fs-3 text-primary"></i>
-                        </div>
-                        <div>
-                            <h6 class="fw-bold mb-1 text-dark">Módulo de Inventario</h6>
-                            <p class="mb-0 text-muted" style="font-size:.78rem;">Precios · Stock · PMP · Importar /
-                                Exportar</p>
-                        </div>
-                        <i class="bi bi-chevron-right ms-auto text-muted"></i>
-                    </div>
-                </div>
-            </a>
-
-            <a href="/crm" class="text-decoration-none flex-fill">
-                <div class="card border-0 shadow-sm h-100 d-flex flex-row align-items-stretch overflow-hidden"
-                    style="border-radius:.75rem;">
-                    <div style="width:6px;background:#059669;flex-shrink:0;"></div>
-                    <div class="d-flex align-items-center gap-3 p-4 flex-grow-1 bg-white">
-                        <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                            style="width:52px;height:52px;background:#ecfdf5;">
-                            <i class="bi bi-people fs-3 text-success"></i>
-                        </div>
-                        <div>
-                            <h6 class="fw-bold mb-1 text-dark">CRM de Clientes</h6>
-                            <p class="mb-0 text-muted" style="font-size:.78rem;">Clientes · Vehículos · Historial · QR
-                            </p>
-                        </div>
-                        <i class="bi bi-chevron-right ms-auto text-muted"></i>
-                    </div>
-                </div>
-            </a>
-
-        </div>
-    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+    function dashboardData() {
+        return {
+            rates: {{ rates | tojson }},
+            products: {{ products_json | safe }},
+            calc: { usd: 1, bs: ({{ rates.usd_oficial }}).toFixed(2) },
+            quoteReq: { oilId: '', oilPrice: 0, filterId: '', filterPrice: 0, oilQty: 4, includeLabor: true, includeLogistics: true },
+            quoteRes: { total_usd: 16.50, total_bs: 0 }, // Init with default labor+logistics
+
+            updateBs() {
+                if (typeof this.calc.usd !== 'number') return;
+                this.calc.bs = (this.calc.usd * this.rates.usd_oficial).toFixed(2);
+            },
+            updateUsd() {
+                if (typeof this.calc.bs !== 'number') return;
+                this.calc.usd = (this.calc.bs / this.rates.usd_oficial).toFixed(2);
+            },
+            shareRate() {
+                const date = new Date().toLocaleDateString('es-VE');
+                const text = `Tasa LubMovil (${date}): ${this.rates.usd_oficial.toFixed(2)} Bs.`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+            },
+            updateQuote() {
+                let total = 0;
+                if (this.quoteReq.oilId) total += (this.quoteReq.oilPrice * this.quoteReq.oilQty);
+                if (this.quoteReq.filterId) total += this.quoteReq.filterPrice;
+                if (this.quoteReq.includeLabor) total += 15.0;
+                if (this.quoteReq.includeLogistics) total += 1.50;
+
+                this.quoteRes.total_usd = total;
+                this.quoteRes.total_bs = total * this.rates.usd_oficial;
+            },
+            init() {
+                this.updateQuote();
+                // Fix initial Linked Inputs
+                this.calc.bs = (this.calc.usd * this.rates.usd_oficial).toFixed(2);
+            }
+            }
+        };
+    }
+</script>
 {% endblock %}

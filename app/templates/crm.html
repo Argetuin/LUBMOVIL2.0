@@ -222,13 +222,11 @@
                     <h6>{{ client.full_name }}</h6>
                     <p>
                         {% if client.phone %}<i class="bi bi-telephone ms-0 me-1"></i>{{ client.phone }}{% endif %}
-                        {% if client.address_reference %} · <i class="bi bi-geo-alt mx-1"></i>{{
-                        client.address_reference|truncate(15) }}{% endif %}
+                        {% if client.address_reference %} · <i class="bi bi-geo-alt mx-1"></i>{{ client.address_reference|truncate(15) }}{% endif %}
                     </p>
                 </div>
                 {% if client.vehicles|length > 0 %}
-                <span class="badge bg-secondary rounded-pill bg-opacity-10 text-secondary border">{{
-                    client.vehicles|length }}<i class="bi bi-car-front ms-1"></i></span>
+                <span class="badge bg-secondary rounded-pill bg-opacity-10 text-secondary border">{{ client.vehicles|length }}<i class="bi bi-car-front ms-1"></i></span>
                 {% endif %}
             </div>
             {% endfor %}
