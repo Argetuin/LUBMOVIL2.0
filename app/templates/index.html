@@ -176,7 +176,8 @@
         <div class="col-md-8">
             <h1 class="fw-black mb-0 tracking-tight">DASHBOARD <span
                     class="text-muted-visible fw-light">OPERATIVO</span></h1>
-            <p class="text-muted-visible small">Bienvenido, <span class="fw-bold text-white">{{ user.full_name }}</span>. Control total de LubMovil.</p>
+            <p class="text-muted-visible small">Bienvenido, <span class="fw-bold text-white">{{ user.full_name
+                    }}</span>. Control total de LubMovil.</p>
         </div>
         <div class="col-md-4 text-md-end">
             <div
@@ -241,11 +242,13 @@
                         <tbody>
                             {% for order in recent_sales %}
                             <tr>
-                                <td><span class="badge bg-dark border border-secondary border-opacity-50 text-light">{{ order.order_number }}</span></td>
+                                <td><span class="badge bg-dark border border-secondary border-opacity-50 text-light">{{
+                                        order.order_number }}</span></td>
                                 <td>
                                     {% if order.vehicle and order.vehicle.client %}
                                     <div class="fw-bold text-white">{{ order.vehicle.client.full_name }}</div>
-                                    <div class="x-small text-white-50">{{ order.vehicle.brand }} {{ order.vehicle.model }} ({{ order.vehicle.plate }})</div>
+                                    <div class="x-small text-white-50">{{ order.vehicle.brand }} {{ order.vehicle.model
+                                        }} ({{ order.vehicle.plate }})</div>
                                     {% else %}
                                     <div class="fw-bold text-white">Consumidor Final / Especial</div>
                                     <div class="x-small text-white-50">Datos no disponibles</div>
@@ -264,7 +267,8 @@
                                     <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3">En
                                         Proceso</span>
                                     {% else %}
-                                    <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3">{{ order.status }}</span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3">{{
+                                        order.status }}</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
@@ -309,6 +313,30 @@
 
         <div class="col-12 col-xl-4">
             <div class="d-flex flex-column gap-4 sticky-top" style="top: 2rem; z-index: 10">
+                <div class="glass-card p-4 shadow-xl animate-fade-in" style="animation-delay: 0.35s">
+                    <h6 class="fw-bold mb-3 text-uppercase tracking-wider small text-white">TASAS DE CAMBIO (VE)</h6>
+                    <div class="d-flex flex-column gap-2">
+                        <div
+                            class="d-flex justify-content-between align-items-center py-2 border-bottom border-white border-opacity-10">
+                            <span class="text-white"><i class="bi bi-bank me-2 text-primary"></i>Dólar BCV</span>
+                            <span class="fw-bold text-white"><span x-text="rates.usd_oficial.toFixed(2)"></span>
+                                Bs</span>
+                        </div>
+                        <div
+                            class="d-flex justify-content-between align-items-center py-2 border-bottom border-white border-opacity-10">
+                            <span class="text-white"><i class="bi bi-currency-exchange me-2 text-success"></i>Dólar
+                                Paralelo</span>
+                            <span class="fw-bold text-white"><span x-text="rates.usd_paralelo.toFixed(2)"></span>
+                                Bs</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-2">
+                            <span class="text-white"><i class="bi bi-flag me-2 text-warning"></i>Euro Oficial</span>
+                            <span class="fw-bold text-white"><span x-text="rates.eur_oficial.toFixed(2)"></span>
+                                Bs</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="glass-card p-4 shadow-xl border-success border-opacity-20 animate-fade-in"
                     style="animation-delay: 0.4s">
                     <h6 class="fw-bold mb-3 text-uppercase tracking-wider small text-white">Dólar BCV Hoy</h6>
@@ -434,7 +462,7 @@
             products: {{ products_json | safe }},
             calc: { usd: 1, bs: ({{ rates.usd_oficial }}).toFixed(2) },
             quoteReq: { oilId: '', oilPrice: 0, filterId: '', filterPrice: 0, oilQty: 4, includeLabor: true, includeLogistics: true },
-            quoteRes: { total_usd: 16.50, total_bs: 0 }, // Init with default labor+logistics
+            quoteRes: { total_usd: 16.50, total_bs: 0 },
 
             updateBs() {
                 if (typeof this.calc.usd !== 'number') return;
@@ -461,9 +489,7 @@
             },
             init() {
                 this.updateQuote();
-                // Fix initial Linked Inputs
                 this.calc.bs = (this.calc.usd * this.rates.usd_oficial).toFixed(2);
-            }
             }
         };
     }

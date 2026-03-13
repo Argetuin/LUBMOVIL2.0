@@ -1,6 +1,7 @@
 from datetime import timedelta, datetime
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Response, Form, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.core import security
@@ -52,6 +53,7 @@ def login(
     return {"msg": "Login exitoso"}
 
 @router.get("/logout")
-def logout(response: Response):
+def logout():
+    response = RedirectResponse(url="/login")
     response.delete_cookie("access_token")
-    return {"msg": "Sesión cerrada"}
+    return response
