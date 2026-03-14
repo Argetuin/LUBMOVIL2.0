@@ -105,6 +105,7 @@ class SystemSettings(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     bcv_rate = Column(Float, default=0.0)
+    cash_rate = Column(Float, default=0.0)  # Tasa para incentivar pago en efectivo
     last_api_sync = Column(DateTime)
 
 # ─── CRM ELITE ────────────────────────────────────────────────────────────────

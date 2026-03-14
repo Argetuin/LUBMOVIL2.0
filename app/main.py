@@ -99,6 +99,10 @@ async def index(request: Request, db: Session = Depends(deps.get_db)):
             },
             "recent_sales": recent_sales
         })
+    except HTTPException as e:
+        if e.status_code == 401:
+            return RedirectResponse(url="/login")
+        raise e
     except Exception as e:
         import traceback
         print(f"ERROR in index route: {e}")

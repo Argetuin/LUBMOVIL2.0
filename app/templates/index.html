@@ -360,6 +360,16 @@
                                 <input type="number" class="calc-input" x-model.number="calc.bs" @input="updateUsd()">
                             </div>
                         </div>
+                        <div class="calc-input-group">
+                            <label class="calc-label text-white-50">Tasa Efectivo (Incentivo)</label>
+                            <div class="d-flex align-items-center">
+                                <span class="fs-4 fw-bold text-warning me-2">Bs</span>
+                                <input type="number" class="calc-input text-warning" x-model.number="rates.cash_rate"
+                                    @input="updateQuote()">
+                            </div>
+                            <small class="text-white-50 mt-1" style="font-size: 0.7rem;">Modifica esta tasa para ajustar
+                                el ahorro en efectivo.</small>
+                        </div>
                     </div>
                     <button class="btn btn-success w-100 rounded-pill fw-bold shadow-sm" @click="shareRate()"><i
                             class="bi bi-whatsapp me-2"></i> Compartir Tasa</button>
@@ -370,6 +380,13 @@
                         <h6 class="fw-bold mb-0 text-uppercase tracking-wider small text-white">Express Price</h6>
                         <span
                             class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3">Real-Time</span>
+                    </div>
+                    <div class="mb-3 search-select-container">
+                        <label class="calc-label text-white-50">Modelo del Vehículo</label>
+                        <div class="calc-input-group p-2">
+                            <input type="text" class="calc-input fs-6 text-start" placeholder="Ej: Toyota Corolla..."
+                                x-model="vehicleModel">
+                        </div>
                     </div>
                     <div class="mb-3 search-select-container" x-data="{ open: false, search: '' }">
                         <label class="calc-label">Aceite</label>
@@ -440,11 +457,27 @@
                                 x-model="quoteReq.includeLogistics" @change="updateQuote()">
                         </div>
                     </div>
-                    <div
-                        class="glass-card p-4 bg-dark bg-opacity-60 border-primary border-opacity-40 text-center shadow-inner">
-                        <div class="calc-label text-center mb-1 text-white">TOTAL ESTIMADO</div>
-                        <h1 class="fw-black neon-text-green mb-0" x-text="'$' + quoteRes.total_usd.toFixed(2)"></h1>
-                        <div class="fw-bold text-white-50" x-text="quoteRes.total_bs.toFixed(2) + ' Bs'"></div>
+                    <div class="glass-card p-4 bg-dark bg-opacity-60 border-primary border-opacity-40 shadow-inner">
+                        <div class="row g-3">
+                            <div class="col-6 border-end border-white border-opacity-10">
+                                <div class="small text-white-50 mb-1">Pago Digital (BCV)</div>
+                                <div class="h3 fw-black text-white mb-0"
+                                    x-text="quoteRes.total_bs.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' Bs'">
+                                </div>
+                                <div class="small text-white-50" x-text="'Equiv: $' + quoteRes.total_usd.toFixed(2)">
+                                </div>
+                            </div>
+                            <div class="col-6 bg-success bg-opacity-10 rounded-3 p-2 text-center">
+                                <div class="small text-success fw-bold mb-1"><i class="bi bi-shield-check me-1"></i>Pago
+                                    Efectivo</div>
+                                <div class="h2 fw-black text-success mb-0"
+                                    x-text="'$' + quoteRes.total_cash_usd.toFixed(2)"></div>
+                                <div class="badge bg-success text-dark small fw-black tracking-tighter">AHORRO APLICADO
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary w-100 rounded-pill fw-bold shadow-sm mt-3"
+                            @click="shareQuote()"><i class="bi bi-whatsapp me-2"></i> Compartir Presupuesto</button>
                     </div>
                 </div>
             </div>
@@ -461,36 +494,70 @@
             rates: {{ rates | tojson }},
             products: {{ products_json | safe }},
             calc: { usd: 1, bs: ({{ rates.usd_oficial }}).toFixed(2) },
-            quoteReq: { oilId: '', oilPrice: 0, filterId: '', filterPrice: 0, oilQty: 4, includeLabor: true, includeLogistics: true },
-            quoteRes: { total_usd: 16.50, total_bs: 0 },
+    vehicleModel: '',
+        quoteReq: {
+        oilId: '',
+            oilPrice: 0,
+                filterId: '',
+                    filterPrice: 0,
+                        oilQty: 4,
+                            includeLabor: true,
+                                includeLogistics: true
+    },
+    quoteRes: {
+        total_usd: 0,
+            total_bs: 0,
+                total_cash_usd: 0
+    },
 
-            updateBs() {
-                if (typeof this.calc.usd !== 'number') return;
-                this.calc.bs = (this.calc.usd * this.rates.usd_oficial).toFixed(2);
-            },
-            updateUsd() {
-                if (typeof this.calc.bs !== 'number') return;
-                this.calc.usd = (this.calc.bs / this.rates.usd_oficial).toFixed(2);
-            },
-            shareRate() {
-                const date = new Date().toLocaleDateString('es-VE');
-                const text = `Tasa LubMovil (${date}): ${this.rates.usd_oficial.toFixed(2)} Bs.`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-            },
-            updateQuote() {
-                let total = 0;
-                if (this.quoteReq.oilId) total += (this.quoteReq.oilPrice * this.quoteReq.oilQty);
-                if (this.quoteReq.filterId) total += this.quoteReq.filterPrice;
-                if (this.quoteReq.includeLabor) total += 15.0;
-                if (this.quoteReq.includeLogistics) total += 1.50;
+    updateBs() {
+        if (typeof this.calc.usd !== 'number') return;
+        this.calc.bs = (this.calc.usd * this.rates.usd_oficial).toFixed(2);
+    },
+    updateUsd() {
+        if (typeof this.calc.bs !== 'number') return;
+        this.calc.usd = (this.calc.bs / this.rates.usd_oficial).toFixed(2);
+    },
+    shareQuote() {
+        const date = new Date().toLocaleDateString('es-VE');
+        const vehicle = this.vehicleModel || 'Vehículo';
+        const totalBsFormatted = this.quoteRes.total_bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const totalCashFormatted = this.quoteRes.total_cash_usd.toFixed(2);
 
-                this.quoteRes.total_usd = total;
-                this.quoteRes.total_bs = total * this.rates.usd_oficial;
-            },
-            init() {
-                this.updateQuote();
-                this.calc.bs = (this.calc.usd * this.rates.usd_oficial).toFixed(2);
-            }
+        const text = `LubMovil - Presupuesto Rápido
+Servicio para: ${vehicle}
+---------------------------
+💳 Pago Móvil / Digital: ${totalBsFormatted} Bs.
+💵 Pago Efectivo USD: $${totalCashFormatted} (Precio con descuento)
+---------------------------
+Tasa BCV: ${this.rates.usd_oficial.toFixed(2)} Bs.`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    },
+    shareRate() {
+        const date = new Date().toLocaleDateString('es-VE');
+        const text = `Tasa LubMovil (${date}): ${this.rates.usd_oficial.toFixed(2)} Bs.`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    },
+    updateQuote() {
+        let total = 0;
+        if (this.quoteReq.oilId) total += (this.quoteReq.oilPrice * this.quoteReq.oilQty);
+        if (this.quoteReq.filterId) total += this.quoteReq.filterPrice;
+        if (this.quoteReq.includeLabor) total += 15.0;
+        if (this.quoteReq.includeLogistics) total += 1.50;
+
+        this.quoteRes.total_usd = total;
+        this.quoteRes.total_bs = total * this.rates.usd_oficial;
+
+        // Lógica de Precio Dual: Incentivo por Efectivo
+        if (this.rates.cash_rate > 0) {
+            this.quoteRes.total_cash_usd = this.quoteRes.total_bs / this.rates.cash_rate;
+        } else {
+            this.quoteRes.total_cash_usd = total;
+        }
+    },
+    init() {
+        this.updateQuote();
+    }
         };
     }
 </script>
