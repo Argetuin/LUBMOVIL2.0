@@ -17,8 +17,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# Logs
+*.log
+server_new.log
+
 # IDE files
 .vscode/
-
-# Ignore static uploads if necessary (optional)
-# app/static/product_images/
