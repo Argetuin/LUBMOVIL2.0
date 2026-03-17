@@ -49,6 +49,22 @@ app.include_router(inventory.router, prefix="/api/inventory", tags=["inventory"]
 app.include_router(crm_routes.router, prefix="/api/crm", tags=["crm"])
 app.include_router(brain.router, prefix="/api/brain", tags=["brain transactional"])
 
+@app.get("/debug-env")
+async def debug_env():
+    import os
+    import sys
+    files = os.listdir(".")
+    db_exists = os.path.exists("lubmovil.db")
+    db_writable = os.access("lubmovil.db", os.W_OK) if db_exists else "N/A"
+    return {
+        "cwd": os.getcwd(),
+        "files": files,
+        "db_exists": db_exists,
+        "db_writable": db_writable,
+        "python_version": sys.version,
+        "env_keys": list(os.environ.keys())
+    }
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, db: Session = Depends(deps.get_db)):
     try:

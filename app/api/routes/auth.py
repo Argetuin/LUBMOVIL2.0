@@ -50,15 +50,15 @@ def login(
             secure=True, # Cambiar a True en producción con HTTPS
         )
 
-        # Registrar en AuditLog
-        user.last_login = datetime.utcnow()
-        audit_log = AuditLog(
-            user_id=user.id,
-            action="LOGIN",
-            description=f"Usuario {username} inició sesión"
-        )
-        db.add(audit_log)
-        db.commit()
+        # COMENTADO TEMPORALMENTE PARA DEBUG: Evitar errores de escritura en Render si el FS es solo lectura
+        # user.last_login = datetime.utcnow()
+        # audit_log = AuditLog(
+        #     user_id=user.id,
+        #     action="LOGIN",
+        #     description=f"Usuario {username} inició sesión"
+        # )
+        # db.add(audit_log)
+        # db.commit()
 
         return {"msg": "Login exitoso"}
     except HTTPException:
