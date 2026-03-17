@@ -19,8 +19,17 @@ def login(
     password: str = Form(...)
 ) -> Any:
     user = db.query(User).filter(User.username == username).first()
-    if not user or not security.verify_password(password, user.hashed_password):
+    print(f"DEBUG LOGIN: Intentando entrar con usuario '{username}'")
+    if not user:
+        print(f"DEBUG LOGIN: El usuario '{username}' no existe en la base de datos.")
         raise HTTPException(status_code=400, detail="Credenciales incorrectas")
+    
+    password_ok = security.verify_password(password, user.hashed_password)
+    print(f"DEBUG LOGIN: Usuario encontrado. Verificación de password: {password_ok}")
+    
+    if not password_ok:
+        raise HTTPException(status_code=400, detail="Credenciales incorrectas")
+    
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Usuario inactivo")
 
