@@ -18,48 +18,56 @@ def login(
     username: str = Form(...),
     password: str = Form(...)
 ) -> Any:
-    user = db.query(User).filter(User.username == username).first()
-    print(f"DEBUG LOGIN: Intentando entrar con usuario '{username}'")
-    if not user:
-        print(f"DEBUG LOGIN: El usuario '{username}' no existe en la base de datos.")
-        raise HTTPException(status_code=400, detail="Credenciales incorrectas")
-    
-    password_ok = security.verify_password(password, user.hashed_password)
-    print(f"DEBUG LOGIN: Usuario encontrado. Verificación de password: {password_ok}")
-    
-    if not password_ok:
-        raise HTTPException(status_code=400, detail="Credenciales incorrectas")
-    
-    if not user.is_active:
-        raise HTTPException(status_code=400, detail="Usuario inactivo")
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        print(f"DEBUG LOGIN: Intentando entrar con usuario '{username}'")
+        if not user:
+            print(f"DEBUG LOGIN: El usuario '{username}' no existe en la base de datos.")
+            raise HTTPException(status_code=400, detail="Credenciales incorrectas")
+        
+        password_ok = security.verify_password(password, user.hashed_password)
+        print(f"DEBUG LOGIN: Usuario encontrado. Verificación de password: {password_ok}")
+        
+        if not password_ok:
+            raise HTTPException(status_code=400, detail="Credenciales incorrectas")
+        
+        if not user.is_active:
+            raise HTTPException(status_code=400, detail="Usuario inactivo")
 
-    access_token_expires = timedelta(days=settings.ACCESS_TOKEN_EXPIRE_DAYS)
-    access_token = security.create_access_token(
-        user.username, expires_delta=access_token_expires
-    )
+        access_token_expires = timedelta(days=settings.ACCESS_TOKEN_EXPIRE_DAYS)
+        access_token = security.create_access_token(
+            user.username, expires_delta=access_token_expires
+        )
 
-    # Configurar cookie httponly
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        max_age=int(access_token_expires.total_seconds()),
-        expires=int(access_token_expires.total_seconds()),
-        samesite="Lax",
-        secure=True, # Cambiar a True en producción con HTTPS
-    )
+        # Configurar cookie httponly
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            max_age=int(access_token_expires.total_seconds()),
+            expires=int(access_token_expires.total_seconds()),
+            samesite="Lax",
+            secure=True, # Cambiar a True en producción con HTTPS
+        )
 
-    # Registrar en AuditLog
-    user.last_login = datetime.utcnow()
-    audit_log = AuditLog(
-        user_id=user.id,
-        action="LOGIN",
-        description=f"Usuario {username} inició sesión"
-    )
-    db.add(audit_log)
-    db.commit()
+        # Registrar en AuditLog
+        user.last_login = datetime.utcnow()
+        audit_log = AuditLog(
+            user_id=user.id,
+            action="LOGIN",
+            description=f"Usuario {username} inició sesión"
+        )
+        db.add(audit_log)
+        db.commit()
 
-    return {"msg": "Login exitoso"}
+        return {"msg": "Login exitoso"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_msg = f"INTERNAL ERROR: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @router.get("/logout")
 def logout():
