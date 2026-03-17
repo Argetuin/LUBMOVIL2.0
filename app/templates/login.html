@@ -88,10 +88,11 @@
             `;
             }
         } catch (error) {
+            console.error('Login error:', error);
             alertContainer.innerHTML = `
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="bi bi-wifi-off me-2"></i>
-                Error de conexión. Intente de nuevo.
+                Error de conexión: ${error.message}. Verifique su internet o logs del servidor.
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `;

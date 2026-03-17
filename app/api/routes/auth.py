@@ -37,7 +37,7 @@ def login(
         max_age=int(access_token_expires.total_seconds()),
         expires=int(access_token_expires.total_seconds()),
         samesite="Lax",
-        secure=False, # Cambiar a True en producción con HTTPS
+        secure=True, # Cambiar a True en producción con HTTPS
     )
 
     # Registrar en AuditLog
