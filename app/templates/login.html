@@ -1,3 +1,4 @@
+{% set hide_nav = True %}
 {% extends "base.html" %}
 
 {% block title %}Iniciar Sesión{% endblock %}
@@ -26,7 +27,7 @@
                         <span class="input-group-text bg-white border-end-0"><i
                                 class="bi bi-person text-muted"></i></span>
                         <input type="text" class="form-control border-start-0 ps-0" id="username" name="username"
-                            required placeholder="admin">
+                            required placeholder="admin" autofocus autocomplete="off">
                     </div>
                 </div>
                 <div class="mb-4">

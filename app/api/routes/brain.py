@@ -209,6 +209,7 @@ def checkout_service(payload: dict, db: Session = Depends(get_db)):
             signature_data=payload.get("signature_data"), # Base64 Canvas
             
             notes=payload.get("notes", ""),
+            technician_name=payload.get("technician_name", ""),
             products_json=json.dumps(products_used)
         )
         db.add(order)
@@ -263,7 +264,7 @@ def checkout_service(payload: dict, db: Session = Depends(get_db)):
                 "id": order.id,
                 "order_number": order.order_number,
                 "total_usd": total_usd,
-                "total_bs": order.total_bs
+                "total_bs": order.total_amount_bs
             }
         }
         

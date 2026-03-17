@@ -228,6 +228,7 @@ class ServiceOrder(Base):
     signature_data = Column(Text, nullable=True) # Firma digital en Base64
     
     notes = Column(Text, nullable=True)
+    technician_name = Column(String, nullable=True) # Nombre del técnico que realizó el servicio
     products_json = Column(Text, nullable=True) # Resumen de lo usado
     payment_method = Column(String, nullable=True)
     

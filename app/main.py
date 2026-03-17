@@ -356,7 +356,8 @@ async def receipt_page(order_id: int, request: Request, db: Session = Depends(de
         
         return templates.TemplateResponse("receipt_template.html", {
             "request": request,
-            "order": order
+            "order": order,
+            "settings": settings
         })
     except Exception as e:
         print(f"Error cargando recibo: {e}")

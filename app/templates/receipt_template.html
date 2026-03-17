@@ -87,8 +87,52 @@
     }
 </style>
 
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+    async function downloadReceiptImage() {
+        const btn = document.getElementById('btn-download-img');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generando...';
+        btn.disabled = true;
+
+        const element = document.getElementById('receipt-card-to-capture');
+
+        try {
+            const canvas = await html2canvas(element, {
+                scale: 2, // Alta resolución (Retina/Display)
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            // Convertimos a Blob para mejor manejo del nombre de archivo en navegadores modernos
+            // Se elige PNG por su capacidad de mantener la calidad sin pérdidas y soportar transparencia,
+            // lo cual es ideal para documentos y gráficos con texto.
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Recibo-LubMovil-{{ order.order_number }}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+
+        } catch (error) {
+            console.error('Error al generar imagen:', error);
+            alert('No se pudo generar la imagen del recibo.');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}
+
 <div class="container pb-5">
-    <div class="receipt-card card">
+    <div id="receipt-card-to-capture" class="receipt-card card p-0">
         <div class="receipt-header">
             <div class="mb-3">
                 <span class="status-badge">Servicio Completado</span>
@@ -105,9 +149,10 @@
             <!-- Datos del Cliente / Vehículo -->
             <div class="row g-4 mb-5">
                 <div class="col-6">
-                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Vehículo</label>
-                    <h5 class="fw-bold mb-0">{{ order.vehicle.plate }}</h5>
-                    <p class="text-muted small mb-0">{{ order.vehicle.brand }} {{ order.vehicle.model }}</p>
+                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Cliente</label>
+                    <h5 class="fw-bold mb-0">{{ order.vehicle.client.full_name }}</h5>
+                    <p class="text-muted small mb-0">{{ order.vehicle.plate }} — {{ order.vehicle.brand }} {{
+                        order.vehicle.model }}</p>
                 </div>
                 <div class="col-6 text-end">
                     <label class="text-muted small text-uppercase fw-bold d-block mb-1">Fecha</label>
@@ -175,17 +220,17 @@
             <div class="row g-2 mb-5">
                 <div class="col-4">
                     <img src="{{ order.photo_odometer_url or '/static/img/no-photo.png' }}" class="evidence-img"
-                        alt="Odómetro">
+                        alt="Odómetro" crossorigin="anonymous">
                     <p class="text-center small text-muted mt-1">Odómetro</p>
                 </div>
                 <div class="col-4">
                     <img src="{{ order.photo_engine_before_url or '/static/img/no-photo.png' }}" class="evidence-img"
-                        alt="Antes">
+                        alt="Antes" crossorigin="anonymous">
                     <p class="text-center small text-muted mt-1">Antes</p>
                 </div>
                 <div class="col-4">
                     <img src="{{ order.photo_engine_after_url or '/static/img/no-photo.png' }}" class="evidence-img"
-                        alt="Después">
+                        alt="Después" crossorigin="anonymous">
                     <p class="text-center small text-muted mt-1">Después</p>
                 </div>
             </div>
@@ -194,29 +239,33 @@
             <div class="signature-box">
                 <p class="text-muted small mb-2">Firma del Cliente (Conformidad)</p>
                 {% if order.signature_data %}
-                <img src="{{ order.signature_data }}" class="signature-img" alt="Firma">
+                <img src="{{ order.signature_data }}" class="signature-img" alt="Firma" crossorigin="anonymous">
                 {% else %}
                 <div class="py-3 text-muted opacity-50"><i>Sin firma registrada</i></div>
                 {% endif %}
-            </div>
-
-            <div class="text-center mt-5 no-print">
-                <div class="d-grid gap-3">
-                    <button class="btn btn-primary btn-lg rounded-pill shadow" onclick="window.print()">
-                        <i class="bi bi-printer me-2"></i>Imprimir Recibo
-                    </button>
-                    <a href="https://wa.me/{{ order.vehicle.client.phone }}?text={{ ('¡Hola! Te envío el recibo de tu servicio en LubMovil. Orden #' ~ order.order_number)|urlencode }}"
-                        class="btn btn-outline-success btn-lg rounded-pill">
-                        <i class="bi bi-whatsapp me-2"></i>Enviar al Cliente
-                    </a>
-                    <a href="/cerebro" class="btn btn-link text-muted">Volver al Cerebro</a>
-                </div>
             </div>
 
             <p class="text-center text-muted small mt-5 mb-0">
                 LUBMOVIL — Servicios Automotrices de Grado Pro<br>
                 <span class="opacity-50">Gracias por confiar en nosotros.</span>
             </p>
+        </div>
+    </div>
+
+    <div class="text-center mt-4 no-print" style="max-width: 600px; margin-left: auto; margin-right: auto;">
+        <div class="d-grid gap-3">
+            <button id="btn-download-img" class="btn btn-warning btn-lg rounded-pill shadow fw-bold"
+                onclick="downloadReceiptImage()">
+                <i class="bi bi-image me-2"></i>Generar Imagen para WhatsApp
+            </button>
+            <button class="btn btn-primary btn-lg rounded-pill shadow" onclick="window.print()">
+                <i class="bi bi-printer me-2"></i>Imprimir Recibo
+            </button>
+            <a href="https://wa.me/{{ order.vehicle.client.phone }}?text={{ ('¡Hola! Te envío el recibo de tu servicio en LubMovil. Orden #' ~ order.order_number)|urlencode }}"
+                class="btn btn-outline-success btn-lg rounded-pill">
+                <i class="bi bi-whatsapp me-2"></i>Enviar vía WhatsApp
+            </a>
+            <a href="/cerebro" class="btn btn-link text-muted">Volver al Cerebro</a>
         </div>
     </div>
 </div>

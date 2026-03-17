@@ -19,6 +19,7 @@
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
+    {% if not hide_nav %}
     <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="/">
@@ -54,6 +55,7 @@
             {% endif %}
         </div>
     </nav>
+    {% endif %}
 
     <div class="{% block container_class %}container mt-4{% endblock %}">
         {% block content %}{% endblock %}

@@ -351,10 +351,24 @@
 
             <div class="step-panel" :class="{'active': step === 3}">
                 <h4 class="fw-bold text-center mb-4">Ejecución Técnica</h4>
-                <div class="card mb-4 bg-light border-0">
-                    <div class="card-body"><label class="form-label fw-bold">Kilometraje Actual (Odómetro)
-                            *</label><input type="number"
-                            class="form-control form-control-lg text-center font-monospace" x-model="actualOdometer">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100 bg-light border-0">
+                            <div class="card-body">
+                                <label class="form-label fw-bold">Kilometraje Actual (Odómetro) *</label>
+                                <input type="number" class="form-control form-control-lg text-center font-monospace"
+                                    x-model="actualOdometer">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 bg-light border-0">
+                            <div class="card-body">
+                                <label class="form-label fw-bold">Técnico Responsable *</label>
+                                <input type="text" class="form-control form-control-lg" placeholder="Nombre del técnico"
+                                    x-model="technicianName">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <h6 class="fw-bold mb-3">Checklist LUBMOVIL</h6>
@@ -480,78 +494,79 @@
             vehicles: GLOBAL_VEHICLES, oils: GLOBAL_PRODUCTS.oils, filters: GLOBAL_PRODUCTS.filters,
             selectedOilId: '', selectedFilterId: '', quoteData: null, quoteError: '',
             bcvRate: BCV_RATE, paraleloRate: {{ paralelo_rate }},
-            actualOdometer: '', checklist: { drained: false, filter: false, plug: false, cleaned: false },
+            actualOdometer: '', technicianName: '', checklist: { drained: false, filter: false, plug: false, cleaned: false },
             paymentMethod: '', b64Photos: { photo_odometer: null, photo_before: null, photo_after: null },
             filterVehicles() {
-                if (this.searchQuery.length < 2) { this.filteredVehicles = []; return; }
-                const q = this.searchQuery.toLowerCase().trim();
-                this.filteredVehicles = this.vehicles.filter(v =>
-                    v.plate.toLowerCase().includes(q) ||
-                    v.client_name.toLowerCase().includes(q) ||
-                    v.brand.toLowerCase().includes(q) ||
-                    v.model.toLowerCase().includes(q)
-                );
-            },
-            selectVehicle(v) { this.selectedVehicle = v; },
-            isChecklistComplete() {
-                if (!this.actualOdometer) return false;
-                if (!this.checklist.drained || !this.checklist.plug || !this.checklist.cleaned) return false;
-                if (this.selectedFilterId && !this.checklist.filter) return false;
-                return true;
-            },
+        if (this.searchQuery.length < 2) { this.filteredVehicles = []; return; }
+        const q = this.searchQuery.toLowerCase().trim();
+        this.filteredVehicles = this.vehicles.filter(v =>
+            v.plate.toLowerCase().includes(q) ||
+            v.client_name.toLowerCase().includes(q) ||
+            v.brand.toLowerCase().includes(q) ||
+            v.model.toLowerCase().includes(q)
+        );
+    },
+    selectVehicle(v) { this.selectedVehicle = v; },
+    isChecklistComplete() {
+        if (!this.actualOdometer || !this.technicianName) return false;
+        if (!this.checklist.drained || !this.checklist.plug || !this.checklist.cleaned) return false;
+        if (this.selectedFilterId && !this.checklist.filter) return false;
+        return true;
+    },
             async fetchQuote() {
-                if (!this.selectedVehicle || !this.selectedOilId) { this.quoteData = null; return; }
-                try {
-                    let url = `/api/brain/quote?vehicle_id=${this.selectedVehicle.vehicle_id}&oil_product_id=${this.selectedOilId}`;
-                    if (this.selectedFilterId) url += `&filter_product_id=${this.selectedFilterId}`;
-                    const res = await fetch(url);
-                    const dat = await res.json();
-                    if (!res.ok) { this.quoteError = dat.detail; this.quoteData = null; return; }
-                    this.quoteData = dat;
-                    this.quoteError = '';
-                } catch (e) { this.quoteError = "Error de conexión."; }
-            },
-            previewImage(ev, prevId, varName) {
-                const file = ev.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        document.getElementById(prevId).style.backgroundImage = `url(${e.target.result})`;
-                        document.getElementById(prevId).style.display = 'block';
-                        this.b64Photos[varName] = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            },
-            clearSignature() { if (signaturePad) signaturePad.clear(); },
+        if (!this.selectedVehicle || !this.selectedOilId) { this.quoteData = null; return; }
+        try {
+            let url = `/api/brain/quote?vehicle_id=${this.selectedVehicle.vehicle_id}&oil_product_id=${this.selectedOilId}`;
+            if (this.selectedFilterId) url += `&filter_product_id=${this.selectedFilterId}`;
+            const res = await fetch(url);
+            const dat = await res.json();
+            if (!res.ok) { this.quoteError = dat.detail; this.quoteData = null; return; }
+            this.quoteData = dat;
+            this.quoteError = '';
+        } catch (e) { this.quoteError = "Error de conexión."; }
+    },
+    previewImage(ev, prevId, varName) {
+        const file = ev.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById(prevId).style.backgroundImage = `url(${e.target.result})`;
+                document.getElementById(prevId).style.display = 'block';
+                this.b64Photos[varName] = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    },
+    clearSignature() { if (signaturePad) signaturePad.clear(); },
             async executeAtomicCheckout() {
-                if (signaturePad.isEmpty()) { alert("Firma requerida."); return; }
-                this.isSubmitting = true;
-                document.getElementById('loadingOverlay').style.display = 'flex';
-                const payload = {
-                    vehicle_id: this.selectedVehicle.vehicle_id,
-                    odometer_at_service: parseInt(this.actualOdometer),
-                    items: { oil_id: this.selectedOilId, oil_qty: this.quoteData.breakdown.oil.qty, filter_id: this.selectedFilterId || null },
-                    total_usd: this.quoteData.total_usd,
-                    payment_method: this.paymentMethod,
-                    checklist: this.checklist,
-                    photo_odometer: this.b64Photos.photo_odometer, photo_before: this.b64Photos.photo_before, photo_after: this.b64Photos.photo_after,
-                    signature_data: signaturePad.toDataURL()
-                };
-                try {
-                    const res = await fetch('/api/brain/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    const dat = await res.json();
-                    if (res.ok) {
-                        const receiptUrl = `${window.location.origin}/cerebro/receipt/${dat.order.id}`;
-                        const msg = `LUBMOVIL - Comprobante:
+        if (signaturePad.isEmpty()) { alert("Firma requerida."); return; }
+        this.isSubmitting = true;
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        const payload = {
+            vehicle_id: this.selectedVehicle.vehicle_id,
+            odometer_at_service: parseInt(this.actualOdometer),
+            technician_name: this.technicianName,
+            items: { oil_id: this.selectedOilId, oil_qty: this.quoteData.breakdown.oil.qty, filter_id: this.selectedFilterId || null },
+            total_usd: this.quoteData.total_usd,
+            payment_method: this.paymentMethod,
+            checklist: this.checklist,
+            photo_odometer: this.b64Photos.photo_odometer, photo_before: this.b64Photos.photo_before, photo_after: this.b64Photos.photo_after,
+            signature_data: signaturePad.toDataURL()
+        };
+        try {
+            const res = await fetch('/api/brain/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const dat = await res.json();
+            if (res.ok) {
+                const receiptUrl = `${window.location.origin}/cerebro/receipt/${dat.order.id}`;
+                const msg = `LUBMOVIL - Comprobante:
 ${receiptUrl}`;
-                        document.getElementById('whatsappLink').href = `https://wa.me/${this.selectedVehicle.client_phone || ''}?text=${encodeURIComponent(msg)}`;
-                        new bootstrap.Modal(document.getElementById('successModal')).show();
-                    } else { alert("ERROR: " + dat.detail); }
-                } catch (e) { alert("Error crítico."); }
-                this.isSubmitting = false;
-                document.getElementById('loadingOverlay').style.display = 'none';
-            }
+                document.getElementById('whatsappLink').href = `https://wa.me/${this.selectedVehicle.client_phone || ''}?text=${encodeURIComponent(msg)}`;
+                new bootstrap.Modal(document.getElementById('successModal')).show();
+            } else { alert("ERROR: " + dat.detail); }
+        } catch (e) { alert("Error crítico."); }
+        this.isSubmitting = false;
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
         };
     }
 </script>
