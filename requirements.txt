@@ -5,6 +5,8 @@ sqlalchemy
 python-multipart
 python-jose[cryptography]
 passlib[bcrypt]
+bcrypt
 jinja2
 pydantic-settings
 python-dotenv
+httpx
